@@ -143,10 +143,8 @@ C_Timer.After(0.1, addon.GARRISON_FOLLOWER_LIST_UPDATE)
 if skipBattleAnimation then
 	-- allow to immediately click the reward chest
 	hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', function(self, missionID, canComplete, success)
-		if addon.db.profile.skipGarrisonMissionEncounters then
-			self.Stage.EncountersFrame.FadeOut:Play()
-			self.animIndex = GarrisonMissionComplete_FindAnimIndexFor(GarrisonMissionComplete_AnimRewards) - 1
-			self.animTimeLeft = 0
-		end
+		self.Stage.EncountersFrame.FadeOut:Play()
+		self.animIndex = GarrisonMissionComplete_FindAnimIndexFor(GarrisonMissionComplete_AnimRewards) - 1
+		self.animTimeLeft = 0
 	end)
 end

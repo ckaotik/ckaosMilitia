@@ -53,14 +53,16 @@ local function ShowAbilityTooltip(self, motion)
 
 	for _, followerID in pairs(followers) do
 		local data = C_Garrison.GetFollowerInfo(followerID)
-		local displayLevel = data.iLevel
+		local color = RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[data.quality])
+		local displayLevel
 		if data.level < 100 then
 			-- display invisible zero to keep padding intact
-			displayLevel = '|c000000000|r'..data.level
+			displayLevel = '|c000000000|r'..color..data.level..'|r '
+		else
+			displayLevel = color .. data.iLevel .. '|r '
 		end
-		local text  = ('%1$s%2$s|r %3$s'):format(RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[data.quality]), displayLevel, data.name)
 		local statusColor = data.status == _G.GARRISON_FOLLOWER_ON_MISSION and _G.RED_FONT_COLOR or _G.YELLOW_FONT_COLOR
-		GameTooltip:AddDoubleLine(text, data.status or '', nil, nil, nil, statusColor.r, statusColor.g, statusColor.b)
+		GameTooltip:AddDoubleLine(displayLevel..data.name, data.status or '', nil, nil, nil, statusColor.r, statusColor.g, statusColor.b)
 	end
 	GameTooltip:Show()
 end

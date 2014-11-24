@@ -11,7 +11,7 @@ local showRewardCounts     = true
 -- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep
 local tinsert, tsort = table.insert, table.sort
 
-local propertyOrder = {'iLevel', 'level', 'name'}
+local propertyOrder = {'iLevel', 'level', 'quality', 'name'}
 local function SortFollowers(a, b)
 	local dataA, dataB = C_Garrison.GetFollowerInfo(a), C_Garrison.GetFollowerInfo(b)
 	for _, property in ipairs(propertyOrder) do
@@ -228,7 +228,9 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 		elseif reward.quantity == 1 then
 			-- show item level
 			local _, link, quality, iLevel = GetItemInfo(reward.itemID)
-			quantity = ITEM_QUALITY_COLORS[quality].hex .. iLevel .. '|r'
+			if iLevel then
+				quantity = ITEM_QUALITY_COLORS[quality or _G.LE_ITEM_QUALITY_COMMON].hex .. iLevel .. '|r'
+			end
 		end
 		if quantity then
 			button.Quantity:Show()

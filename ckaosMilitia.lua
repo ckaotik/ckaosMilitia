@@ -5,9 +5,10 @@ local skipBattleAnimation  = true
 local showExtraMissionInfo = true
 local showRewardCounts     = true
 
--- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage
--- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode
--- GLOBALS: pairs, ipairs, wipe, table, strsplit
+-- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, ITEM_QUALITY_COLORS
+-- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick
+-- GLOBALS: GarrisonMissionComplete_FindAnimIndexFor, GarrisonMissionComplete_AnimRewards
+-- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep
 local tinsert, tsort = table.insert, table.sort
 
 local propertyOrder = {'iLevel', 'level', 'name'}
@@ -155,7 +156,7 @@ local function UpdateMissionList()
 				button.followers:SetPoint('CENTER', button, 'TOPLEFT', 40, -16)
 			end
 			local icon = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0:0:0:0:32:32:4:26:4:26|t'
-			button.followers:SetText(string.rep(icon, mission.numFollowers))
+			button.followers:SetText(strrep(icon, mission.numFollowers))
 
 			-- show required abilities
 			local _, _, env, envDesc, envIcon, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
@@ -198,7 +199,7 @@ local function GetPrettyAmount(value)
 	value = tostring(value)
 	local gold, silver, copper = value:sub(1, -5), value:sub(-4, -3), value:sub(-2, -1)
 	      gold, silver, copper = (gold or 0)*1, (silver or 0)*1, (copper or 0)*1
-	local stringFormat = string.join('',
+	local stringFormat = strjoin('',
 		gold > 0 and '%1$s' or '', gold > 0 and '|cffffd700g|r' or '',
 		silver > 0 and '%2$02d' or '', silver > 0 and '|cffc7c7cfs|r' or '',
 		copper > 0 and '%3$02d' or '', copper > 0 and '|cffeda55fc|r' or '')
@@ -215,8 +216,6 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 	local index = 1
 	for id, reward in pairs(rewards) do
 		local button = self.Rewards[index]
-		      -- button.link = nil
-		      -- button:SetScript('OnClick', OnRewardClick) -- TODO/FIXME: supposedly does not exist?
 		local quantity = reward.quantity or reward.followerXP
 		if not reward.itemID then
 			if reward.currencyID == 0 then
@@ -229,7 +228,6 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 		elseif reward.quantity == 1 then
 			-- show item level
 			local _, link, quality, iLevel = GetItemInfo(reward.itemID)
-			-- button.link = link
 			quantity = ITEM_QUALITY_COLORS[quality].hex .. iLevel .. '|r'
 		end
 		if quantity then

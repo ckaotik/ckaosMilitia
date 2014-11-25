@@ -1,18 +1,21 @@
 ckaosMilitia
 ============
 
-WoW Addon: Keep track of your garrison followers
+WoW Addon: Keep track of your garrison missions and followers.
 
 Features
 --------
 - Shows all available danger counters, how many followers qualify and what their current state is
-  - attaches to missions, recruiter and report frames
+  - attaches to mission list, recruiter and report frames
+  - shows return time for followers that are currently on missions
 - Allows to skip battle animations to get right to the juicy loot
-  - Note: This can be disabled by editing the .lua file and setting `local skipBattleAnimation = false`
 - Shows the amount of followers required for a mission
-- Shows the threats to counter for each mission
+- Shows the dangers to face in each mission
+  - threats that cannot be countered with available followers are faded out
 - Shows the success chance for active missions
-- Shows the amount or quality-colored item level of mission rewards
+- Shows the amount or quality-colored item level for mission rewards
+
+Several settings are available within the .lua file. Simply change values to `true` to enable or `false` to disable.
 
 Screenshots
 -----------

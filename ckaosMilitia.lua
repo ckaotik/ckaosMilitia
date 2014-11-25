@@ -1,11 +1,15 @@
 local addonName, addon, _ = ...
 addon = CreateFrame('Frame')
 
+--  Use this section to enable/disable specific features
+-- --------------------------------------------------------
 local skipBattleAnimation   = true
 local showExtraMissionInfo  = true
 local showRewardCounts      = true
 local desaturateUnavailable = true
 local showFollowerReturnTime = true
+-- --------------------------------------------------------
+-- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
 -- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, ITEM_QUALITY_COLORS
 -- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick

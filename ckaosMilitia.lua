@@ -16,6 +16,7 @@ local showFollowerReturnTime = true
 -- GLOBALS: GarrisonMissionComplete_FindAnimIndexFor, GarrisonMissionComplete_AnimRewards
 -- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep
 local tinsert, tsort = table.insert, table.sort
+local emptyTable = {}
 
 local propertyOrder = {'iLevel', 'level', 'quality', 'name'}
 local function SortFollowers(a, b)
@@ -215,7 +216,7 @@ local function UpdateMissionList()
 					-- desaturate threats we cannot counter
 					if not active and desaturateUnavailable then
 						local numCounters = 0
-						for _, followerID in ipairs(abilities.ability[threatID]) do
+						for _, followerID in ipairs(abilities.ability[threatID] or emptyTable) do
 							if C_Garrison.GetFollowerLevel(followerID) + 2 >= mission.level
 								and C_Garrison.GetFollowerItemLevelAverage(followerID) + 10 >= mission.iLevel
 								and not C_Garrison.GetFollowerStatus(followerID) then

@@ -1,9 +1,11 @@
 local addonName, addon, _ = ...
 addon = CreateFrame('Frame')
 
-local skipBattleAnimation  = true
-local showExtraMissionInfo = true
-local showRewardCounts     = true
+local skipBattleAnimation   = true
+local showExtraMissionInfo  = true
+local showRewardCounts      = true
+local desaturateUnavailable = true
+local showFollowerReturnTime = true
 
 -- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, ITEM_QUALITY_COLORS
 -- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick
@@ -21,6 +23,7 @@ local function SortFollowers(a, b)
 	end
 end
 
+local mechanics, traits = {}, {}
 local abilities = {
 	ability = {},
 	trait = {},
@@ -31,22 +34,45 @@ local function ScanFollowerAbilities()
 	for index, follower in pairs(C_Garrison.GetFollowers()) do
 		if follower.isCollected then
 			for abilityIndex, ability in pairs(C_Garrison.GetFollowerAbilities(follower.followerID)) do
-				local dataTable = abilities[ability.isTrait and 'trait' or 'ability']
-				for _, threat in pairs(ability.counters) do
-					local threatLabel = ('%s|%s|%s'):format(threat.icon, threat.name, threat.description)
-					if not dataTable[threatLabel] then dataTable[threatLabel] = {} end
-					tinsert(dataTable[threatLabel], follower.followerID)
-					tsort(dataTable[threatLabel], SortFollowers)
+				local dataTable, key
+				if ability.isTrait then
+					key = ability.id
+					dataTable = abilities.trait
+					-- store trait info
+					traits[ability.id] = traits[ability.id] or {
+						icon = ability.icon,
+						name = ability.name,
+						description = ability.description,
+					}
+				else
+					local mechanicID, mechanicInfo = next(ability.counters)
+					key = mechanicID
+					dataTable = abilities.ability
+					-- store reference to info table
+					mechanics[mechanicID] = mechanicInfo
 				end
+
+				if not dataTable[key] then dataTable[key] = {} end
+				tinsert(dataTable[key], follower.followerID)
+				tsort(dataTable[key], SortFollowers)
 			end
 		end
 	end
 	return abilities
 end
 
-local function ShowAbilityTooltip(self, motion)
-	local threat = self.threat
-	local followers = threat and abilities.ability[threat]
+local function GetMissionTimeLeft(followerID)
+	for index, mission in ipairs(GarrisonMissionFrame.MissionTab.MissionList.inProgressMissions) do
+		for _, missionFollowerID in ipairs(mission.followers) do
+			if missionFollowerID == followerID then
+				return mission.timeLeft
+			end
+		end
+	end
+end
+
+local function ShowAbilityTooltip(self)
+	local followers = self.threatID and abilities.ability[self.threatID]
 	if not followers then return end
 
 	if self.description then
@@ -56,16 +82,21 @@ local function ShowAbilityTooltip(self, motion)
 
 	for _, followerID in pairs(followers) do
 		local data = C_Garrison.GetFollowerInfo(followerID)
-		local color = RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[data.quality])
+		local qualityColor = RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[data.quality])
 		local displayLevel
 		if data.level < 100 then
 			-- display invisible zero to keep padding intact
-			displayLevel = '|c000000000|r'..color..data.level..'|r '
+			displayLevel = '|c000000000|r'..qualityColor..data.level..'|r '
 		else
-			displayLevel = color .. data.iLevel .. '|r '
+			displayLevel = qualityColor .. data.iLevel .. '|r '
 		end
-		local statusColor = data.status == _G.GARRISON_FOLLOWER_ON_MISSION and _G.RED_FONT_COLOR or _G.YELLOW_FONT_COLOR
-		GameTooltip:AddDoubleLine(displayLevel..data.name, data.status or '', nil, nil, nil, statusColor.r, statusColor.g, statusColor.b)
+		local status = data.status or ''
+		local color  = status == _G.GARRISON_FOLLOWER_ON_MISSION and _G.RED_FONT_COLOR or _G.YELLOW_FONT_COLOR
+		if showFollowerReturnTime and status == _G.GARRISON_FOLLOWER_ON_MISSION then
+			-- follower will return from her mission
+			status = GetMissionTimeLeft(followerID)
+		end
+		GameTooltip:AddDoubleLine(displayLevel..data.name, status, nil, nil, nil, color.r, color.g, color.b)
 	end
 	GameTooltip:Show()
 end
@@ -94,9 +125,7 @@ end
 local function UpdateFollowerTabs(frame)
 	ScanFollowerAbilities()
 	local index = 1
-	for threat, followers in pairs(abilities.ability) do
-		local icon, name, description = strsplit('|', threat)
-		local followersList = '' -- table.concat(followers, '|n')
+	for threatID, followers in pairs(abilities.ability) do
 		local numAvailable, numFollowers = #followers, #followers
 		for _, followerID in pairs(followers) do
 			local data = C_Garrison.GetFollowerInfo(followerID)
@@ -106,10 +135,11 @@ local function UpdateFollowerTabs(frame)
 		end
 
 		local tab = GetTab(frame, index)
-		tab.threat = threat
-		tab:SetNormalTexture(icon)
-		tab.tooltip = ('|T%1$s:0|t %2$s'):format(icon, name)
-		tab.description = description
+		tab.threatID = threatID
+		local threatInfo = mechanics[threatID]
+		tab:SetNormalTexture(threatInfo.icon)
+		tab.tooltip = ('|T%1$s:0|t %2$s'):format(threatInfo.icon, threatInfo.name)
+		tab.description = threatInfo.description
 		tab.count:SetText(numAvailable ~= numFollowers
 			and ('%d/%d'):format(numAvailable, numFollowers)
 			or numFollowers)
@@ -173,9 +203,35 @@ local function UpdateMissionList()
 						end
 						button.threats[numThreats] = threatButton
 					end
+					threatButton.threatID = threatID
 					threatButton.info = threat
 					threatButton.Icon:SetTexture(threat.icon)
 					threatButton:Show()
+
+					-- desaturate threats we cannot counter
+					if not active and desaturateUnavailable then
+						local numCounters = 0
+						for _, followerID in ipairs(abilities.ability[threatID]) do
+							if C_Garrison.GetFollowerLevel(followerID) + 2 >= mission.level
+								and C_Garrison.GetFollowerItemLevelAverage(followerID) + 10 >= mission.iLevel
+								and not C_Garrison.GetFollowerStatus(followerID) then
+								-- must have high level, high gear and be available
+								numCounters = numCounters + 1
+							end
+						end
+						-- might have used up followers for previous counters
+						for prevThreatIndex = 1, numThreats - 1 do
+							if button.threats[prevThreatIndex].threatID == threatID then
+								numCounters = numCounters - 1
+							end
+						end
+						threatButton.Icon:SetDesaturated(numCounters < 1)
+						threatButton.Icon:SetAlpha(numCounters < 1 and 0.5 or 1)
+					else
+						threatButton.Icon:SetDesaturated(false)
+						threatButton.Icon:SetAlpha(1)
+					end
+
 					numThreats = numThreats + 1
 				end
 			end
@@ -228,11 +284,11 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 		elseif reward.quantity == 1 then
 			-- show item level
 			local _, link, quality, iLevel = GetItemInfo(reward.itemID)
-			if iLevel then
+			if iLevel > 1 then
 				quantity = ITEM_QUALITY_COLORS[quality or _G.LE_ITEM_QUALITY_COMMON].hex .. iLevel .. '|r'
 			end
 		end
-		if quantity then
+		if quantity and quantity ~= 1 then
 			button.Quantity:Show()
 			button.Quantity:SetText(quantity)
 		end
@@ -277,4 +333,5 @@ if showRewardCounts then
 end
 
 -- initialize on the currently shown frame
+ScanFollowerAbilities()
 C_Timer.After(0.1, addon.GARRISON_FOLLOWER_LIST_UPDATE)

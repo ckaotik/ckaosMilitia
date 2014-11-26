@@ -96,7 +96,9 @@ local function ShowAbilityTooltip(self)
 			displayLevel = qualityColor .. data.iLevel .. '|r '
 		end
 		local status = data.status or ''
-		local color  = status == _G.GARRISON_FOLLOWER_ON_MISSION and _G.RED_FONT_COLOR or _G.YELLOW_FONT_COLOR
+		local color  = status == _G.GARRISON_FOLLOWER_INACTIVE and _G.GRAY_FONT_COLOR
+			or status == _G.GARRISON_FOLLOWER_ON_MISSION and _G.RED_FONT_COLOR
+			or _G.YELLOW_FONT_COLOR
 		if showFollowerReturnTime and status == _G.GARRISON_FOLLOWER_ON_MISSION then
 			-- follower will return from her mission
 			status = GetMissionTimeLeft(followerID)
@@ -332,6 +334,7 @@ end
 if showExtraMissionInfo then
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
+	GarrisonMissionFrame.MissionTab.MissionPage.CloseButton:HookScript('OnClick', UpdateMissionList)
 end
 if showRewardCounts then
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)

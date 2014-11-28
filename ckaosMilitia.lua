@@ -40,7 +40,8 @@ local function ScanFollowerAbilities()
 		if follower.isCollected then
 			for abilityIndex, ability in pairs(C_Garrison.GetFollowerAbilities(follower.followerID)) do
 				local dataTable, key
-				if ability.isTrait then
+				local mechanicID, mechanicInfo = next(ability.counters)
+				if not mechanicInfo then
 					key = ability.id
 					dataTable = abilities.trait
 					-- store trait info

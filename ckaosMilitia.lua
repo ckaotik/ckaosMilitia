@@ -139,6 +139,10 @@ local function UpdateFollowerTabs(frame)
 			local data = C_Garrison.GetFollowerInfo(followerID)
 			if data.status and data.status ~= _G.GARRISON_FOLLOWER_IN_PARTY then
 				numAvailable = numAvailable - 1
+				if data.status == _G.GARRISON_FOLLOWER_INACTIVE then
+					-- don't count inactive followers in tab count
+					numFollowers = numFollowers - 1
+				end
 			end
 		end
 
@@ -148,9 +152,7 @@ local function UpdateFollowerTabs(frame)
 		tab:SetNormalTexture(threatInfo.icon)
 		tab.tooltip = ('|T%1$s:0|t %2$s'):format(threatInfo.icon, threatInfo.name)
 		tab.description = threatInfo.description
-		tab.count:SetText(numAvailable ~= numFollowers
-			and ('%d/%d'):format(numAvailable, numFollowers)
-			or numFollowers)
+		tab.count:SetText(numAvailable ~= numFollowers and ('%d/%d'):format(numAvailable, numFollowers) or numFollowers)
 		index = index + 1
 	end
 end

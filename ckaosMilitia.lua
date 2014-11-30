@@ -3,11 +3,12 @@ addon = CreateFrame('Frame')
 
 --  Use this section to enable/disable specific features
 -- --------------------------------------------------------
-local skipBattleAnimation   = true
-local showExtraMissionInfo  = true
-local showRewardCounts      = true
-local desaturateUnavailable = true
+local skipBattleAnimation    = true
+local showExtraMissionInfo   = true
+local showRewardCounts       = true
+local desaturateUnavailable  = true
 local showFollowerReturnTime = true
+local showRequiredResources  = true
 -- --------------------------------------------------------
 -- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
@@ -249,6 +250,16 @@ local function UpdateMissionList()
 			if numThreats > 1 then
 				local anchorFrom, relativeTo, anchorTo, xOffset, yOffset = button.Title:GetPoint()
 				button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
+			end
+
+			if showRequiredResources then
+				local duration = mission.duration
+				if mission.durationSeconds >= _G.GARRISON_LONG_MISSION_TIME then
+					duration = _G.GARRISON_LONG_MISSION_TIME_FORMAT:format(mission.duration)
+				end
+				button.Summary:SetDrawLayer('OVERLAY') -- fix our icon layer
+				button.Summary:SetFormattedText('(%2$s, %1$s |TInterface\\Icons\\inv_garrison_resource:0:0:0:0|t)',
+					mission.cost or 0, duration)
 			end
 
 			-- hide unused threat buttons

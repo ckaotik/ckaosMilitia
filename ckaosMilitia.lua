@@ -252,7 +252,7 @@ local function UpdateMissionList()
 				button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
 			end
 
-			if showRequiredResources then
+			if showRequiredResources and not active then
 				local duration = mission.duration
 				if mission.durationSeconds >= _G.GARRISON_LONG_MISSION_TIME then
 					duration = _G.GARRISON_LONG_MISSION_TIME_FORMAT:format(mission.duration)

@@ -97,15 +97,19 @@ local function ShowAbilityTooltip(self)
 		else
 			displayLevel = qualityColor .. data.iLevel .. '|r '
 		end
-		local status = data.status or ''
-		local color  = status == _G.GARRISON_FOLLOWER_INACTIVE and _G.GRAY_FONT_COLOR
-			or status == _G.GARRISON_FOLLOWER_ON_MISSION and _G.RED_FONT_COLOR
-			or _G.YELLOW_FONT_COLOR
+		local status, name = data.status or '', data.name
+		local color  = _G.YELLOW_FONT_COLOR
+		if status == _G.GARRISON_FOLLOWER_INACTIVE then
+			color = _G.GRAY_FONT_COLOR
+			name  = _G.GRAY_FONT_COLOR_CODE .. name .. '|r'
+		elseif status == _G.GARRISON_FOLLOWER_ON_MISSION then
+			color = _G.RED_FONT_COLOR
+		end
 		if showFollowerReturnTime and status == _G.GARRISON_FOLLOWER_ON_MISSION then
 			-- follower will return from her mission
 			status = GetMissionTimeLeft(followerID)
 		end
-		GameTooltip:AddDoubleLine(displayLevel..data.name, status, nil, nil, nil, color.r, color.g, color.b)
+		GameTooltip:AddDoubleLine(displayLevel..name, status, nil, nil, nil, color.r, color.g, color.b)
 	end
 	GameTooltip:Show()
 end

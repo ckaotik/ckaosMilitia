@@ -361,9 +361,9 @@ end
 if doubleClickToAddFollower then
 	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do
 		button:HookScript('OnDoubleClick', function(self, btn)
+			if GarrisonMissionFrame.selectedTab ~= 1 then return end
 			-- collapse button
-			local followerFrame = self:GetParent():GetParent().followerFrame
-			followerFrame.FollowerList.expandedFollower = nil
+			self:GetScript('OnClick')(self, btn)
 
 			-- add to mission
 			local info = C_Garrison.GetFollowerInfo(self.id)

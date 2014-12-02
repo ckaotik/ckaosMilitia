@@ -1,7 +1,7 @@
 ## Interface: 60000
 ## Author: ckaotik
 ## Title: ckaosMilitia
-## Version: 6.0v6
+## Version: 6.0v7
 
 ## LoadOnDemand: 1
 ## LoadWith: Blizzard_GarrisonUI

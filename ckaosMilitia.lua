@@ -9,6 +9,7 @@ local showRewardCounts       = true
 local desaturateUnavailable  = true
 local showFollowerReturnTime = true
 local showRequiredResources  = true
+local doubleClickToAddFollower = true
 -- --------------------------------------------------------
 -- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
@@ -356,6 +357,25 @@ if showExtraMissionInfo then
 end
 if showRewardCounts then
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
+end
+if doubleClickToAddFollower then
+	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do
+		button:HookScript('OnDoubleClick', function(self, btn)
+			-- collapse button
+			local followerFrame = self:GetParent():GetParent().followerFrame
+			followerFrame.FollowerList.expandedFollower = nil
+
+			-- add to mission
+			local info = C_Garrison.GetFollowerInfo(self.id)
+			if info.status == GARRISON_FOLLOWER_IN_PARTY then
+				local missionID = GarrisonMissionFrame.MissionTab.MissionPage.missionInfo.missionID
+				C_Garrison.RemoveFollowerFromMission(missionID, self.id)
+			else
+				GarrisonMissionPage_AddFollower(self.id)
+			end
+			GarrisonMissionPage_UpdateParty()
+		end)
+	end
 end
 
 -- initialize on the currently shown frame

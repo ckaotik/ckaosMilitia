@@ -10,6 +10,7 @@ local desaturateUnavailable  = true
 local showFollowerReturnTime = true
 local showRequiredResources  = true
 local doubleClickToAddFollower = true
+local setMissionFrameMovable = true
 -- --------------------------------------------------------
 -- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
@@ -376,6 +377,11 @@ if doubleClickToAddFollower then
 			GarrisonMissionPage_UpdateParty()
 		end)
 	end
+end
+if setMissionFrameMovable then
+	local frame = GarrisonMissionFrame
+	      frame:SetMovable(true)
+	frame:CreateTitleRegion():SetAllPoints(frame.TopBorder)
 end
 
 -- initialize on the currently shown frame

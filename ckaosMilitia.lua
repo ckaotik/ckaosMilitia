@@ -230,7 +230,7 @@ local function UpdateMissionList()
 						local numCounters = 0
 						for _, followerID in ipairs(abilities.ability[threatID] or emptyTable) do
 							if C_Garrison.GetFollowerLevel(followerID) + 2 >= mission.level
-								and C_Garrison.GetFollowerItemLevelAverage(followerID) + 10 >= mission.iLevel
+								and C_Garrison.GetFollowerItemLevelAverage(followerID) + 14 >= mission.iLevel
 								and not C_Garrison.GetFollowerStatus(followerID) then
 								-- must have high level, high gear and be available
 								numCounters = numCounters + 1

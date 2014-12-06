@@ -138,6 +138,9 @@ local function GetTab(frame, index)
 end
 
 local function UpdateFollowerTabs(frame)
+	-- don't update for invisible frames
+	if not frame or not frame:IsShown() then return end
+
 	ScanFollowerAbilities()
 	local index = 1
 	for threatID, followers in pairs(abilities.ability) do
@@ -342,9 +345,7 @@ end
 addon:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
 	for _, frame in pairs({GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage}) do
-		if frame:IsShown() then
-			UpdateFollowerTabs(frame)
-		end
+		UpdateFollowerTabs(frame)
 	end
 end
 
@@ -371,7 +372,8 @@ if doubleClickToAddFollower then
 			if info.status == GARRISON_FOLLOWER_IN_PARTY then
 				local missionID = GarrisonMissionFrame.MissionTab.MissionPage.missionInfo.missionID
 				C_Garrison.RemoveFollowerFromMission(missionID, self.id)
-			else
+			elseif not info.status then
+				-- cannot add inactive/on mission/... followers
 				GarrisonMissionPage_AddFollower(self.id)
 			end
 			GarrisonMissionPage_UpdateParty()

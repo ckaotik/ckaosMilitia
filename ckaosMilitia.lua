@@ -11,6 +11,7 @@ local showFollowerReturnTime = true
 local showRequiredResources  = true
 local doubleClickToAddFollower = true
 local setMissionFrameMovable = true
+local showOnMissionCounters  = true
 -- --------------------------------------------------------
 -- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
@@ -79,6 +80,19 @@ local function GetMissionTimeLeft(followerID)
 		end
 	end
 end
+
+--[[ local counteredMechanics = {}
+local function GetCounteredMechanics(followerID)
+	wipe(counteredMechanics)
+	for index = 1, #C_Garrison.GetFollowerAbilities(followerID) do
+		local abilityID = C_Garrison.GetFollowerAbilityAtIndex(followerID, index)
+		if abilityID ~= 0 then
+			local id, name, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityID)
+			counteredMechanics[id] = icon
+		end
+	end
+	return counteredMechanics
+end --]]
 
 local function ShowAbilityTooltip(self)
 	local followers = self.threatID and abilities.ability[self.threatID]
@@ -179,6 +193,7 @@ local function UpdateMissionList()
 	local self     = GarrisonMissionFrame.MissionTab.MissionList
 	local active   = self.showInProgress
 	local missions = active and self.inProgressMissions or self.availableMissions
+	local _, numRessources = GetCurrencyInfo(824)
 
 	local offset  = HybridScrollFrame_GetOffset(self.listScroll)
 	local buttons = self.listScroll.buttons
@@ -263,12 +278,13 @@ local function UpdateMissionList()
 
 			if showRequiredResources and not active then
 				local duration = mission.duration
+				-- TODO: add more steps to colorize by duration
 				if mission.durationSeconds >= _G.GARRISON_LONG_MISSION_TIME then
 					duration = _G.GARRISON_LONG_MISSION_TIME_FORMAT:format(mission.duration)
 				end
 				button.Summary:SetDrawLayer('OVERLAY') -- fix our icon layer
-				button.Summary:SetFormattedText('(%2$s, %1$s |TInterface\\Icons\\inv_garrison_resource:0:0:0:0|t)',
-					mission.cost or 0, duration)
+				button.Summary:SetFormattedText('(%2$s, %3$s%1$s|r |TInterface\\Icons\\inv_garrison_resource:0:0:0:0|t)',
+					mission.cost or 0, duration, (mission.cost or 0) > numRessources and _G.RED_FONT_COLOR_CODE or '')
 			end
 
 			-- hide unused threat buttons
@@ -359,6 +375,19 @@ if showExtraMissionInfo then
 end
 if showRewardCounts then
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
+end
+if showOnMissionCounters then
+	-- note: this will still only show counters for followers that meet level/ilevel requirements
+	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', function(button, follower, showCounters)
+		if follower.status ~= _G.GARRISON_FOLLOWER_ON_MISSION then return end
+		local counters = GarrisonMissionFrame.followerCounters and GarrisonMissionFrame.followerCounters[follower.followerID]
+		if not counters or #counters < 1 then return end
+		for i = 1, #counters do
+			if i > 4 then break end
+			GarrisonFollowerButton_SetCounterButton(button, i, counters[i])
+		end
+		button.Counters[1]:SetPoint('TOPRIGHT', -8, #counters <= 2 and -16 or -4)
+	end)
 end
 if doubleClickToAddFollower then
 	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do

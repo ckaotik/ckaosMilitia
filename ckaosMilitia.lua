@@ -12,6 +12,7 @@ local showRequiredResources  = true
 local doubleClickToAddFollower = true
 local setMissionFrameMovable = true
 local showOnMissionCounters  = true
+local showLandingPageBuildingInfo = true
 -- --------------------------------------------------------
 -- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
@@ -413,6 +414,91 @@ if setMissionFrameMovable then
 	local frame = GarrisonMissionFrame
 	      frame:SetMovable(true)
 	frame:CreateTitleRegion():SetAllPoints(frame.TopBorder)
+end
+
+if showLandingPageBuildingInfo then
+	-- show garrison buildings & plans on landing page
+	local function SortBySize(a, b)
+		local aSort, bSort = a.uiTab <= 2 and a.uiTab or -1, b.uiTab <= 2 and b.uiTab or -1
+		if aSort ~= bSort then
+			return aSort > bSort
+		else
+			return a.buildingID < b.buildingID
+		end
+	end
+	local plotEmpty = {
+		[0] = _G.GARRISON_EMPTY_PLOT_SMALL,
+		[1] = _G.GARRISON_EMPTY_PLOT_MEDIUM,
+		[2] = _G.GARRISON_EMPTY_PLOT_LARGE,
+	}
+	local function OnBuildingEnter(self)
+		GameTooltip:SetOwner(self, 'ANCHOR_TOP')
+		local _, name, _, icon, description, rank, _, _, _, _, _, _, _, upgrades, canUpgrade, isMaxLevel, _, _, _, _, isBeingBuilt, _, _, _, canCompleteBuild = C_Garrison.GetOwnedBuildingInfo(self.plot or 0)
+		if not name then
+			GameTooltip:AddLine(plotEmpty[self.size] or _G.GARRISON_BUILDING_LOCKED)
+		else
+			GameTooltip:AddDoubleLine('|T'..icon..':0|t '..name, isMaxLevel and '' or _G.GARRISON_BUILDING_LEVEL_TOOLTIP_TEXT:format(rank))
+			GameTooltip:AddLine(description, 255, 255, 255, true)
+
+			if not isMaxLevel and not isBeingBuilt and not canCompleteBuild then
+				local _, _, _, _, upgradedRank, currencyID, currencyAmount, goldAmount, buildTime, upgradedDescription = C_Garrison.GetBuildingUpgradeInfo(self.building or 0)
+				local _, _, _, _, _, upgradeNeedsPlan = C_Garrison.GetBuildingTooltip(upgrades[rank+1])
+				GameTooltip:AddLine('|n'.._G.GARRISON_BUILDING_LEVEL_UPGRADE:format(upgradedRank))
+				GameTooltip:AddLine(upgradedDescription, 255, 255, 255, true)
+				if upgradeNeedsPlan then
+					GameTooltip:AddLine(_G.GARRISON_BUILDING_PLANS_REQUIRED, RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
+				end
+				if currencyAmount then
+					local costs = _G.COSTS_LABEL ..' '.. Garrison_GetTotalCostString(currencyAmount, goldAmount) ..'  '.. buildTime .. '|TInterface\\FriendsFrame\\StatusIcon-Away:0|t'
+					GameTooltip:AddLine(costs)
+				end
+			end
+		end
+		GameTooltip:Show()
+	end
+	local function UpdateBuildings()
+		local buildings = GarrisonLandingPage.Report.Buildings
+		local buildingData = C_Garrison.GetBuildings()
+		table.sort(buildingData, SortBySize)
+
+		for i, building in ipairs(buildingData) do
+			local _, name, _, icon, description, rank = C_Garrison.GetOwnedBuildingInfo(building.plotID)
+			buildings[i].building = building.buildingID
+			buildings[i].plot = building.plotID
+			buildings[i].size = building.uiTab
+			if icon then
+				buildings[i]:SetNormalTexture(icon)
+			end
+		end
+	end
+	GarrisonLandingPage:HookScript('OnShow', function(self)
+		if self.Report:IsShown() then
+			if not self.Report.Buildings then
+				local numBuildings = 2+2+3+4 -- large + medium + small + utility
+				self.Report.Buildings = CreateFrame('Frame', nil, self.Report)
+				self.Report.Buildings:SetPoint('BOTTOMLEFT', 38, 40)
+				self.Report.Buildings:SetSize(numBuildings*26, 26)
+
+				for i = 1, numBuildings do
+					local button = CreateFrame('Button', nil, self.Report.Buildings, nil, i)
+					      button:SetSize(26, 26)
+					      button:SetNormalTexture('Interface\\Icons\\inv_misc_questionmark')
+					if i == 1 then
+						button:SetPoint('BOTTOMLEFT', self.Report.Buildings, 'BOTTOMLEFT', 2, 0)
+					else
+						button:SetPoint('BOTTOMLEFT', self.Report.Buildings[i-1], 'BOTTOMRIGHT', 2, 0)
+					end
+					button:SetScript('OnEnter', OnBuildingEnter)
+					button:SetScript('OnLeave', GameTooltip_Hide)
+					self.Report.Buildings[i] = button
+				end
+			end
+			UpdateBuildings()
+			self.Report.Buildings:Show()
+		elseif self.Report.Buildings then
+			self.Report.Buildings:Hide()
+		end
+	end)
 end
 
 -- initialize on the currently shown frame

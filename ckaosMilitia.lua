@@ -9,14 +9,15 @@ local showRewardCounts       = true
 local desaturateUnavailable  = true
 local showFollowerReturnTime = true
 local showRequiredResources  = true
-local doubleClickToAddFollower = true
 local setMissionFrameMovable = true
 local showOnMissionCounters  = true
+local notifyLevelQualityChange = true
+local doubleClickToAddFollower = true
 local showLandingPageBuildingInfo = true
 -- --------------------------------------------------------
 -- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
--- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, ITEM_QUALITY_COLORS
+-- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonRecruitSelectFrame, GarrisonLandingPage, ITEM_QUALITY_COLORS
 -- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick
 -- GLOBALS: GarrisonMissionComplete_FindAnimIndexFor, GarrisonMissionComplete_AnimRewards
 -- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep
@@ -354,6 +355,7 @@ end
 addon:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED')
 function addon:GARRISON_RECRUITMENT_NPC_OPENED()
 	UpdateFollowerTabs(GarrisonRecruiterFrame)
+	UpdateFollowerTabs(GarrisonRecruitSelectFrame)
 end
 addon:RegisterEvent('GARRISON_SHOW_LANDING_PAGE')
 function addon:GARRISON_SHOW_LANDING_PAGE()
@@ -361,8 +363,34 @@ function addon:GARRISON_SHOW_LANDING_PAGE()
 end
 addon:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
-	for _, frame in pairs({GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage}) do
+	for _, frame in pairs({GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}) do
 		UpdateFollowerTabs(frame)
+	end
+end
+
+if notifyLevelQualityChange then
+	addon:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')
+	function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerID, xpGain, oldXP, oldLevel, oldQuality)
+		-- local info = C_Garrison.GetFollowerInfo(followerID) -- .level, .iLevel, .quality
+		local _, _, level, quality, currXP, maxXP = C_Garrison.GetFollowerMissionCompleteInfo(followerID)
+		local name = C_Garrison.GetFollowerLink(followerID)
+
+		local color = _G.ITEM_QUALITY_COLORS[oldQuality].hex
+		if quality > oldQuality then
+			local newSkills
+			if quality == _G.LE_ITEM_QUALITY_EPIC then
+				-- new ability at epic quality
+				local abilityID = C_Garrison.GetFollowerAbilityAtIndex(followerID, 2)
+				newSkills = C_Garrison.GetFollowerAbilityLink(abilityID)
+			end
+			-- new trait at rare & epic quality
+			local traitID = C_Garrison.GetFollowerTraitAtIndex(followerID, quality)
+			newSkills = (newSkills and newSkills..' and ' or '') .. C_Garrison.GetFollowerAbilityLink(traitID)
+
+			print(('%1$s%2$s|r turned %4$s%3$s and learned'):format(color, name, _G['BATTLE_PET_BREED_QUALITY'..(quality+1)], _G.ITEM_QUALITY_COLORS[quality].hex, newSkills))
+		elseif level > oldLevel then
+			print(('%1$s%2$s|r leveled up from %3$d to %4$d'):format(color, name, oldLevel, level))
+		end
 	end
 end
 

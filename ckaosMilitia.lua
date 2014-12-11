@@ -387,9 +387,9 @@ if notifyLevelQualityChange then
 			local traitID = C_Garrison.GetFollowerTraitAtIndex(followerID, quality)
 			newSkills = (newSkills and newSkills..' and ' or '') .. C_Garrison.GetFollowerAbilityLink(traitID)
 
-			print(('%1$s%2$s|r turned %4$s%3$s and learned'):format(color, name, _G['BATTLE_PET_BREED_QUALITY'..(quality+1)], _G.ITEM_QUALITY_COLORS[quality].hex, newSkills))
+			print(('%1$s%2$s|r turned %4$s%3$s|r and learned %5$s'):format(color, name, _G['BATTLE_PET_BREED_QUALITY'..(quality+1)], _G.ITEM_QUALITY_COLORS[quality].hex, newSkills))
 		elseif level > oldLevel then
-			print(('%1$s%2$s|r leveled up from %3$d to %4$d'):format(color, name, oldLevel, level))
+			print(('%1$s%2$s|r turned %4$d!'):format(color, name, oldLevel, level))
 		end
 	end
 end

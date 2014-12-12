@@ -27,6 +27,8 @@ local defaults = {
 	showMinimapBuildings = true,
 	notifyLevelQualityChange = true,
 	doubleClickToAddFollower = true,
+	replaceAbilityWithThreat = true,
+	missionCompleteFollowerTooltips = true,
 }
 
 local propertyOrder = {'iLevel', 'level', 'quality', 'name'}
@@ -417,6 +419,23 @@ local function ShowMinimapBuildings(self, motion)
 	GameTooltip:Show()
 end
 
+local function MissionCompleteFollowerOnEnter(self, ...)
+	if not addon.db.missionCompleteFollowerTooltips then return end
+	local followerID = GarrisonMissionFrame.MissionComplete.currentMission.followers[self:GetID()]
+	self.info = C_Garrison.GetFollowerInfo(followerID)
+	GarrisonMissionPageFollowerFrame_OnEnter(self, ...)
+end
+
+local function TooltipReplaceAbilityWithThreat(tooltipFrame, data)
+	if not addon.db.replaceAbilityWithThreat then return end
+	for index, frame in pairs(tooltipFrame.Abilities) do
+		if frame:IsShown() then
+			local _, _, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(data['ability'..index])
+			frame.Icon:SetTexture(icon)
+		end
+	end
+end
+
 -- --------------------------------------------------------
 --  Event handlers
 -- --------------------------------------------------------
@@ -530,16 +549,25 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
 	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', ShowOnMissionCounters)
+	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 
 	GarrisonMissionFrame.MissionTab.MissionPage.CloseButton:HookScript('OnClick', UpdateMissionList)
 	minimapButton:HookScript('OnEnter', ShowMinimapBuildings)
 	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do
 		button:HookScript('OnDoubleClick', FollowerOnDoubleClick)
 	end
+	-- show follower tooltips in mission complete scene
+	for index, frame in pairs(GarrisonMissionFrame.MissionComplete.Stage.FollowersFrame.Followers) do
+		frame:SetID(index)
+		-- these frames do not properly set their OnEnter/OnLeave scripts
+		frame:SetScript('OnEnter', MissionCompleteFollowerOnEnter)
+		frame:SetScript('OnLeave', GarrisonMissionPageFollowerFrame_OnLeave)
+	end
 
 	-- initialize on the currently shown frame
 	ScanFollowerAbilities()
-	C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE)
+	addon:GARRISON_FOLLOWER_LIST_UPDATE()
+	-- C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE)
 	-- update minimap icon tooltip if it's currently shown
 	if addon.db.showMinimapBuildings and GameTooltip:GetOwner() == minimapButton then
 		minimapButton:GetScript('OnEnter')(minimapButton)

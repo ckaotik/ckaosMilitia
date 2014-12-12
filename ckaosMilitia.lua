@@ -404,12 +404,12 @@ local function ShowMinimapBuildings(self, motion)
 		local bonusText, resources, gold, _, buildTime, needsPlan = C_Garrison.GetBuildingTooltip(upgrades[rank+1] or 0)
 
 		local infoText = _G.GARRISON_BUILDING_LEVEL_TOOLTIP_TEXT:format(rank)
-		if rank == _G.GARRISON_MAX_BUILDING_LEVEL then
-			infoText = _G.GRAY_FONT_COLOR_CODE .. infoText .. '|r'
-		elseif canCompleteBuild then
+		if canCompleteBuild then
 			infoText = _G.GREEN_FONT_COLOR_CODE .. infoText .. '|r'
 		elseif isBeingBuilt then
-			infoText = '|TInterface\\FriendsFrame\\StatusIcon-Away:0|t' .. _G.YELLOW_FONT_COLOR_CODE .. infoText .. '|r'
+			infoText = '|TInterface\\FriendsFrame\\StatusIcon-Away:0|t' .. infoText
+		elseif rank == _G.GARRISON_MAX_BUILDING_LEVEL then
+			infoText = _G.GRAY_FONT_COLOR_CODE .. infoText .. '|r'
 		elseif not needsPlan then
 			infoText = '|TInterface\\petbattles\\battlebar-abilitybadge-strong-small:0|t' .. infoText
 		end
@@ -427,7 +427,7 @@ local function MissionCompleteFollowerOnEnter(self, ...)
 end
 
 local function TooltipReplaceAbilityWithThreat(tooltipFrame, data)
-	if not addon.db.replaceAbilityWithThreat then return end
+	if not addon.db.replaceAbilityWithThreat or not data.noAbilityDescriptions then return end
 	for index, frame in pairs(tooltipFrame.Abilities) do
 		if frame:IsShown() then
 			local _, _, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(data['ability'..index])

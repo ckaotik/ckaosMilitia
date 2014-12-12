@@ -512,7 +512,7 @@ function addon:ADDON_LOADED(event, arg1)
 	minimapButton:SetScript('OnClick', function(self, btn, up)
 		if btn == 'RightButton' then
 			ToggleDropDownMenu(nil, nil, configDropDown, 'cursor')
-		elseif onClick == 'function' then
+		elseif onClick then
 			onClick(self, btn, up)
 		end
 	end)

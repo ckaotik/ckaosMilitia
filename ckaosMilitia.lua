@@ -1,28 +1,33 @@
 local addonName, addon, _ = ...
-addon = CreateFrame('Frame')
-
---  Use this section to enable/disable specific features
--- --------------------------------------------------------
-local skipBattleAnimation    = true
-local showExtraMissionInfo   = true
-local showRewardCounts       = true
-local desaturateUnavailable  = true
-local showFollowerReturnTime = true
-local showRequiredResources  = true
-local setMissionFrameMovable = true
-local showOnMissionCounters  = true
-local notifyLevelQualityChange = true
-local doubleClickToAddFollower = true
-local showLandingPageBuildingInfo = true
--- --------------------------------------------------------
--- DO NOT TOUCH ANYTHING BELOW THIS POINT!
 
 -- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonRecruitSelectFrame, GarrisonLandingPage, ITEM_QUALITY_COLORS
 -- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick
 -- GLOBALS: GarrisonMissionComplete_FindAnimIndexFor, GarrisonMissionComplete_AnimRewards
--- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep
+-- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, hooksecurefunc
+
 local tinsert, tsort = table.insert, table.sort
 local emptyTable = {}
+
+addon.frame = CreateFrame('Frame')
+addon.frame:SetScript('OnEvent', function(self, event, ...)
+	if addon[event] then addon[event](addon, event, ...) end
+end)
+addon.frame:RegisterEvent('ADDON_LOADED')
+
+local defaults = {
+	skipBattleAnimation = true,
+	showExtraMissionInfo = true,
+	showMissionThreats = true,
+	showRewardCounts = true,
+	desaturateUnavailable = true,
+	showFollowerReturnTime = true,
+	showRequiredResources = true,
+	setMissionFrameMovable = true,
+	showOnMissionCounters = true,
+	showMinimapBuildings = true,
+	notifyLevelQualityChange = true,
+	doubleClickToAddFollower = true,
+}
 
 local propertyOrder = {'iLevel', 'level', 'quality', 'name'}
 local function SortFollowers(a, b)
@@ -31,6 +36,14 @@ local function SortFollowers(a, b)
 		if dataA[property] ~= dataB[property] then
 			return dataA[property] < dataB[property]
 		end
+	end
+end
+local function SortBuildingsBySize(a, b)
+	local aSort, bSort = a.uiTab <= 2 and a.uiTab or -1, b.uiTab <= 2 and b.uiTab or -1
+	if aSort ~= bSort then
+		return aSort > bSort
+	else
+		return a.buildingID < b.buildingID
 	end
 end
 
@@ -123,7 +136,7 @@ local function ShowAbilityTooltip(self)
 		elseif status == _G.GARRISON_FOLLOWER_ON_MISSION then
 			color = _G.RED_FONT_COLOR
 		end
-		if showFollowerReturnTime and status == _G.GARRISON_FOLLOWER_ON_MISSION then
+		if addon.db.showFollowerReturnTime and status == _G.GARRISON_FOLLOWER_ON_MISSION then
 			-- follower will return from her mission
 			status = GetMissionTimeLeft(followerID)
 		end
@@ -185,6 +198,7 @@ end
 
 -- allow to immediately click the reward chest
 local function SkipBattleAnimation(self, missionID, canComplete, success)
+	if not addon.db.skipBattleAnimation then return end
 	self.Stage.EncountersFrame.FadeOut:Play()
 	self.animIndex = GarrisonMissionComplete_FindAnimIndexFor(GarrisonMissionComplete_AnimRewards) - 1
 	self.animTimeLeft = 0
@@ -192,6 +206,7 @@ end
 
 -- add extra info to mission list for easier overview
 local function UpdateMissionList()
+	if not addon.db.showExtraMissionInfo then return end
 	local self     = GarrisonMissionFrame.MissionTab.MissionList
 	local active   = self.showInProgress
 	local missions = active and self.inProgressMissions or self.availableMissions
@@ -229,6 +244,7 @@ local function UpdateMissionList()
 			local _, _, env, envDesc, envIcon, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
 			local numThreats = 1
 			for j = 1, #enemies do
+				if not addon.db.showMissionThreats then break end
 				for threatID, threat in pairs(enemies[j].mechanics) do
 					local threatButton = button.threats[numThreats]
 					if not threatButton then
@@ -246,7 +262,7 @@ local function UpdateMissionList()
 					threatButton:Show()
 
 					-- desaturate threats we cannot counter
-					if not active and desaturateUnavailable then
+					if not active and addon.db.desaturateUnavailable then
 						local numCounters = 0
 						for _, followerID in ipairs(abilities.ability[threatID] or emptyTable) do
 							if C_Garrison.GetFollowerLevel(followerID) + 2 >= mission.level
@@ -278,7 +294,7 @@ local function UpdateMissionList()
 				button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
 			end
 
-			if showRequiredResources and not active then
+			if addon.db.showRequiredResources and not active then
 				local duration = mission.duration
 				-- TODO: add more steps to colorize by duration
 				if mission.durationSeconds >= _G.GARRISON_LONG_MISSION_TIME then
@@ -316,7 +332,7 @@ end
 
 -- show reward counts
 local function UpdateMissionRewards(self, rewards, numRewards)
-	if numRewards <= 0 then return end
+	if not addon.db.showRewardCounts or numRewards < 1 then return end
 	local index = 1
 	for id, reward in pairs(rewards) do
 		local button = self.Rewards[index]
@@ -344,191 +360,196 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 	end
 end
 
-addon:SetScript('OnEvent', function(self, event, ...)
-	if self[event] then self[event](self, event, ...) end
-end)
+-- note: this will still only show counters for followers that meet level/ilevel requirements
+local function ShowOnMissionCounters(button, follower, showCounters)
+	if not addon.db.showOnMissionCounters then return end
+	if follower.status ~= _G.GARRISON_FOLLOWER_ON_MISSION then return end
+	local counters = GarrisonMissionFrame.followerCounters and GarrisonMissionFrame.followerCounters[follower.followerID]
+	if not counters or #counters < 1 then return end
+	for i = 1, #counters do
+		if i > 4 then break end
+		GarrisonFollowerButton_SetCounterButton(button, i, counters[i])
+	end
+	button.Counters[1]:SetPoint('TOPRIGHT', -8, #counters <= 2 and -16 or -4)
+end
 
-addon:RegisterEvent('GARRISON_MISSION_NPC_OPENED')
+local function FollowerOnDoubleClick(self, btn)
+	if not addon.db.doubleClickToAddFollower or GarrisonMissionFrame.selectedTab ~= 1 then return end
+	-- trigger second click handling
+	self:GetScript('OnClick')(self, btn)
+
+	-- add to mission
+	local info = C_Garrison.GetFollowerInfo(self.id)
+	if info.status == GARRISON_FOLLOWER_IN_PARTY then
+		local missionID = GarrisonMissionFrame.MissionTab.MissionPage.missionInfo.missionID
+		C_Garrison.RemoveFollowerFromMission(missionID, self.id)
+	elseif not info.status then
+		-- cannot add inactive/on mission/... followers
+		GarrisonMissionPage_AddFollower(self.id)
+	end
+	GarrisonMissionPage_UpdateParty()
+end
+
+-- note: this will only work once Blizzard_GarrisonUI (and therefore this addon) is loaded
+local function ShowMinimapBuildings(self, motion)
+	if not addon.db.showMinimapBuildings then return end
+	local buildings = C_Garrison.GetBuildings()
+	table.sort(buildings, SortBuildingsBySize)
+
+	for i, building in ipairs(buildings) do
+		if i == 1 then GameTooltip:AddLine(' ') end
+		local _, name, _, icon, description, rank, _, _, _, _, _, _, _, upgrades, canUpgrade, isMaxLevel, _, _, _, _, isBeingBuilt, _, _, _, canCompleteBuild = C_Garrison.GetOwnedBuildingInfo(building.plotID)
+		local bonusText, resources, gold, _, buildTime, needsPlan = C_Garrison.GetBuildingTooltip(upgrades[rank+1] or 0)
+
+		local infoText = _G.GARRISON_BUILDING_LEVEL_TOOLTIP_TEXT:format(rank)
+		if rank == _G.GARRISON_MAX_BUILDING_LEVEL then
+			infoText = _G.GRAY_FONT_COLOR_CODE .. infoText .. '|r'
+		elseif canCompleteBuild then
+			infoText = _G.GREEN_FONT_COLOR_CODE .. infoText .. '|r'
+		elseif isBeingBuilt then
+			infoText = '|TInterface\\FriendsFrame\\StatusIcon-Away:0|t' .. _G.YELLOW_FONT_COLOR_CODE .. infoText .. '|r'
+		elseif not needsPlan then
+			infoText = '|TInterface\\petbattles\\battlebar-abilitybadge-strong-small:0|t' .. infoText
+		end
+
+		GameTooltip:AddDoubleLine('|T'..icon..':0|t '..name, infoText)
+	end
+	GameTooltip:Show()
+end
+
+-- --------------------------------------------------------
+--  Event handlers
+-- --------------------------------------------------------
 function addon:GARRISON_MISSION_NPC_OPENED()
 	UpdateFollowerTabs(GarrisonMissionFrame)
 end
-addon:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED')
 function addon:GARRISON_RECRUITMENT_NPC_OPENED()
 	UpdateFollowerTabs(GarrisonRecruiterFrame)
 	UpdateFollowerTabs(GarrisonRecruitSelectFrame)
 end
-addon:RegisterEvent('GARRISON_SHOW_LANDING_PAGE')
 function addon:GARRISON_SHOW_LANDING_PAGE()
 	UpdateFollowerTabs(GarrisonLandingPage)
 end
-addon:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
 	for _, frame in pairs({GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}) do
 		UpdateFollowerTabs(frame)
 	end
 end
 
-if notifyLevelQualityChange then
-	addon:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')
-	function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerID, xpGain, oldXP, oldLevel, oldQuality)
-		-- local info = C_Garrison.GetFollowerInfo(followerID) -- .level, .iLevel, .quality
-		local _, _, level, quality, currXP, maxXP = C_Garrison.GetFollowerMissionCompleteInfo(followerID)
-		local name = C_Garrison.GetFollowerLink(followerID)
+function addon:GARRISON_FOLLOWER_XP_CHANGED(...)
+	if not addon.db.notifyLevelQualityChange then return end
+	local event, followerID, xpGain, oldXP, oldLevel, oldQuality = ...
+	-- local info = C_Garrison.GetFollowerInfo(followerID) -- .level, .iLevel, .quality
+	local _, _, level, quality, currXP, maxXP = C_Garrison.GetFollowerMissionCompleteInfo(followerID)
+	local name = C_Garrison.GetFollowerLink(followerID)
 
-		local color = _G.ITEM_QUALITY_COLORS[oldQuality].hex
-		if quality > oldQuality then
-			local newSkills
-			if quality == _G.LE_ITEM_QUALITY_EPIC then
-				-- new ability at epic quality
-				local abilityID = C_Garrison.GetFollowerAbilityAtIndex(followerID, 2)
-				newSkills = C_Garrison.GetFollowerAbilityLink(abilityID)
-			end
-			-- new trait at rare & epic quality
-			local traitID = C_Garrison.GetFollowerTraitAtIndex(followerID, quality)
-			newSkills = (newSkills and newSkills..' and ' or '') .. C_Garrison.GetFollowerAbilityLink(traitID)
-
-			print(('%1$s%2$s|r turned %4$s%3$s|r and learned %5$s'):format(color, name, _G['BATTLE_PET_BREED_QUALITY'..(quality+1)], _G.ITEM_QUALITY_COLORS[quality].hex, newSkills))
-		elseif level > oldLevel then
-			print(('%1$s%2$s|r turned %4$d!'):format(color, name, oldLevel, level))
+	local color = _G.ITEM_QUALITY_COLORS[oldQuality].hex
+	if quality > oldQuality then
+		local newSkills
+		if quality == _G.LE_ITEM_QUALITY_EPIC then
+			-- new ability at epic quality
+			local abilityID = C_Garrison.GetFollowerAbilityAtIndex(followerID, 2)
+			newSkills = C_Garrison.GetFollowerAbilityLink(abilityID)
 		end
+		-- new trait at rare & epic quality
+		local traitID = C_Garrison.GetFollowerTraitAtIndex(followerID, quality - 1)
+		newSkills = (newSkills and newSkills..' and ' or '') .. C_Garrison.GetFollowerAbilityLink(traitID)
+
+		print(('%1$s%2$s|r turned %4$s%3$s|r and learned %5$s'):format(color, name, _G['BATTLE_PET_BREED_QUALITY'..(quality+1)], _G.ITEM_QUALITY_COLORS[quality].hex, newSkills))
+	elseif level > oldLevel then
+		print(('%1$s%2$s|r turned %4$d!'):format(color, name, oldLevel, level))
 	end
 end
 
-if skipBattleAnimation then
+-- --------------------------------------------------------
+--  Setup
+-- --------------------------------------------------------
+function addon:ADDON_LOADED(event, arg1)
+	if arg1 ~= addonName then return end
+	if not _G[addonName..'DB'] then _G[addonName..'DB'] = {} end
+	addon.db = _G[addonName..'DB']
+
+	-- remove outdated settings
+	for key, value in pairs(addon.db) do
+		if defaults[key] == nil then
+			addon.db[key] = nil
+		end
+	end
+	-- automatically add unregistered settings
+	setmetatable(addon.db, {
+		__index = function(db, key)
+			db[key] = defaults[key]
+			return db[key]
+		end,
+	})
+
+	local function ConfigDropDown_OnClick(info)
+		addon.db[info.value] = not addon.db[info.value]
+		-- TODO: trigger updates
+	end
+	local minimapButton = GarrisonLandingPageMinimapButton
+	local configDropDown = CreateFrame('Frame', '$parent'..addonName..'ConfigDropDown', minimapButton, 'UIDropDownMenuTemplate')
+	configDropDown.displayMode = 'MENU'
+	configDropDown.initialize = function(self, level, menuList)
+		local info = UIDropDownMenu_CreateInfo()
+		info.func = ConfigDropDown_OnClick
+		info.isNotRadio = true
+		info.tooltipOnButton = true
+
+		for setting, value in pairs(defaults) do
+			info.value   = setting
+			info.checked = addon.db[setting]
+			info.text         = addon.L[setting]
+			info.tooltipTitle = addon.L[setting]
+			info.tooltipText  = addon.L[setting..'Desc']
+			UIDropDownMenu_AddButton(info, level)
+		end
+	end
+
+	-- TODO: alternative would be a LDB plugin
+	local onClick = minimapButton:GetScript('OnClick')
+	minimapButton:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
+	minimapButton:SetScript('OnClick', function(self, btn, up)
+		if btn == 'RightButton' then
+			ToggleDropDownMenu(nil, nil, configDropDown, 'cursor')
+		elseif onClick == 'function' then
+			onClick(self, btn, up)
+		end
+	end)
+
+	-- register events
+	addon.frame:RegisterEvent('GARRISON_MISSION_NPC_OPENED')
+	addon.frame:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED')
+	addon.frame:RegisterEvent('GARRISON_SHOW_LANDING_PAGE')
+	addon.frame:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
+	addon.frame:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')
+
+	-- setup hooks
 	hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)
-end
-if showExtraMissionInfo then
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
-	GarrisonMissionFrame.MissionTab.MissionPage.CloseButton:HookScript('OnClick', UpdateMissionList)
-end
-if showRewardCounts then
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
-end
-if showOnMissionCounters then
-	-- note: this will still only show counters for followers that meet level/ilevel requirements
-	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', function(button, follower, showCounters)
-		if follower.status ~= _G.GARRISON_FOLLOWER_ON_MISSION then return end
-		local counters = GarrisonMissionFrame.followerCounters and GarrisonMissionFrame.followerCounters[follower.followerID]
-		if not counters or #counters < 1 then return end
-		for i = 1, #counters do
-			if i > 4 then break end
-			GarrisonFollowerButton_SetCounterButton(button, i, counters[i])
-		end
-		button.Counters[1]:SetPoint('TOPRIGHT', -8, #counters <= 2 and -16 or -4)
-	end)
-end
-if doubleClickToAddFollower then
+	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', ShowOnMissionCounters)
+
+	GarrisonMissionFrame.MissionTab.MissionPage.CloseButton:HookScript('OnClick', UpdateMissionList)
+	minimapButton:HookScript('OnEnter', ShowMinimapBuildings)
 	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do
-		button:HookScript('OnDoubleClick', function(self, btn)
-			if GarrisonMissionFrame.selectedTab ~= 1 then return end
-			-- collapse button
-			self:GetScript('OnClick')(self, btn)
-
-			-- add to mission
-			local info = C_Garrison.GetFollowerInfo(self.id)
-			if info.status == GARRISON_FOLLOWER_IN_PARTY then
-				local missionID = GarrisonMissionFrame.MissionTab.MissionPage.missionInfo.missionID
-				C_Garrison.RemoveFollowerFromMission(missionID, self.id)
-			elseif not info.status then
-				-- cannot add inactive/on mission/... followers
-				GarrisonMissionPage_AddFollower(self.id)
-			end
-			GarrisonMissionPage_UpdateParty()
-		end)
+		button:HookScript('OnDoubleClick', FollowerOnDoubleClick)
 	end
+
+	-- initialize on the currently shown frame
+	ScanFollowerAbilities()
+	C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE)
+	-- update minimap icon tooltip if it's currently shown
+	if addon.db.showMinimapBuildings and GameTooltip:GetOwner() == minimapButton then
+		minimapButton:GetScript('OnEnter')(minimapButton)
+	end
+
+	if addon.db.setMissionFrameMovable then
+		local frame = GarrisonMissionFrame
+		      frame:SetMovable(true)
+		frame:CreateTitleRegion():SetAllPoints(frame.TopBorder)
+	end
+
+	addon.frame:UnregisterEvent(event)
 end
-if setMissionFrameMovable then
-	local frame = GarrisonMissionFrame
-	      frame:SetMovable(true)
-	frame:CreateTitleRegion():SetAllPoints(frame.TopBorder)
-end
-
-if showLandingPageBuildingInfo then
-	-- show garrison buildings & plans on landing page
-	local function SortBySize(a, b)
-		local aSort, bSort = a.uiTab <= 2 and a.uiTab or -1, b.uiTab <= 2 and b.uiTab or -1
-		if aSort ~= bSort then
-			return aSort > bSort
-		else
-			return a.buildingID < b.buildingID
-		end
-	end
-	local plotEmpty = {
-		[0] = _G.GARRISON_EMPTY_PLOT_SMALL,
-		[1] = _G.GARRISON_EMPTY_PLOT_MEDIUM,
-		[2] = _G.GARRISON_EMPTY_PLOT_LARGE,
-	}
-	local function OnBuildingEnter(self)
-		GameTooltip:SetOwner(self, 'ANCHOR_TOP')
-		local _, name, _, icon, description, rank, _, _, _, _, _, _, _, upgrades, canUpgrade, isMaxLevel, _, _, _, _, isBeingBuilt, _, _, _, canCompleteBuild = C_Garrison.GetOwnedBuildingInfo(self.plot or 0)
-		if not name then
-			GameTooltip:AddLine(plotEmpty[self.size] or _G.GARRISON_BUILDING_LOCKED)
-		else
-			GameTooltip:AddDoubleLine('|T'..icon..':0|t '..name, isMaxLevel and '' or _G.GARRISON_BUILDING_LEVEL_TOOLTIP_TEXT:format(rank))
-			GameTooltip:AddLine(description, 255, 255, 255, true)
-
-			if not isMaxLevel and not isBeingBuilt and not canCompleteBuild then
-				local _, _, _, _, upgradedRank, currencyID, currencyAmount, goldAmount, buildTime, upgradedDescription = C_Garrison.GetBuildingUpgradeInfo(self.building or 0)
-				local _, _, _, _, _, upgradeNeedsPlan = C_Garrison.GetBuildingTooltip(upgrades[rank+1])
-				GameTooltip:AddLine('|n'.._G.GARRISON_BUILDING_LEVEL_UPGRADE:format(upgradedRank))
-				GameTooltip:AddLine(upgradedDescription, 255, 255, 255, true)
-				if upgradeNeedsPlan then
-					GameTooltip:AddLine(_G.GARRISON_BUILDING_PLANS_REQUIRED, RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
-				end
-				if currencyAmount then
-					local costs = _G.COSTS_LABEL ..' '.. Garrison_GetTotalCostString(currencyAmount, goldAmount) ..'  '.. buildTime .. '|TInterface\\FriendsFrame\\StatusIcon-Away:0|t'
-					GameTooltip:AddLine(costs)
-				end
-			end
-		end
-		GameTooltip:Show()
-	end
-	local function UpdateBuildings()
-		local buildings = GarrisonLandingPage.Report.Buildings
-		local buildingData = C_Garrison.GetBuildings()
-		table.sort(buildingData, SortBySize)
-
-		for i, building in ipairs(buildingData) do
-			local _, name, _, icon, description, rank = C_Garrison.GetOwnedBuildingInfo(building.plotID)
-			buildings[i].building = building.buildingID
-			buildings[i].plot = building.plotID
-			buildings[i].size = building.uiTab
-			if icon then
-				buildings[i]:SetNormalTexture(icon)
-			end
-		end
-	end
-	GarrisonLandingPage:HookScript('OnShow', function(self)
-		if self.Report:IsShown() then
-			if not self.Report.Buildings then
-				local numBuildings = 2+2+3+4 -- large + medium + small + utility
-				self.Report.Buildings = CreateFrame('Frame', nil, self.Report)
-				self.Report.Buildings:SetPoint('BOTTOMLEFT', 38, 40)
-				self.Report.Buildings:SetSize(numBuildings*26, 26)
-
-				for i = 1, numBuildings do
-					local button = CreateFrame('Button', nil, self.Report.Buildings, nil, i)
-					      button:SetSize(26, 26)
-					      button:SetNormalTexture('Interface\\Icons\\inv_misc_questionmark')
-					if i == 1 then
-						button:SetPoint('BOTTOMLEFT', self.Report.Buildings, 'BOTTOMLEFT', 2, 0)
-					else
-						button:SetPoint('BOTTOMLEFT', self.Report.Buildings[i-1], 'BOTTOMRIGHT', 2, 0)
-					end
-					button:SetScript('OnEnter', OnBuildingEnter)
-					button:SetScript('OnLeave', GameTooltip_Hide)
-					self.Report.Buildings[i] = button
-				end
-			end
-			UpdateBuildings()
-			self.Report.Buildings:Show()
-		elseif self.Report.Buildings then
-			self.Report.Buildings:Hide()
-		end
-	end)
-end
-
--- initialize on the currently shown frame
-ScanFollowerAbilities()
-C_Timer.After(0.1, addon.GARRISON_FOLLOWER_LIST_UPDATE)

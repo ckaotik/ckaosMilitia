@@ -1,9 +1,11 @@
 ## Interface: 60000
 ## Author: ckaotik
 ## Title: ckaosMilitia
-## Version: 6.0v8
+## Version: 6.0v9
+## SavedVariables: ckaosMilitiaDB
 
 ## LoadOnDemand: 1
 ## LoadWith: Blizzard_GarrisonUI
 
+locale.lua
 ckaosMilitia.lua

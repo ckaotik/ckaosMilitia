@@ -550,6 +550,9 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
 	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', ShowOnMissionCounters)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
+	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
+		UpdateFollowerTabs(GarrisonRecruitSelectFrame)
+	end)
 
 	GarrisonMissionFrame.MissionTab.MissionPage.CloseButton:HookScript('OnClick', UpdateMissionList)
 	minimapButton:HookScript('OnEnter', ShowMinimapBuildings)
@@ -566,8 +569,7 @@ function addon:ADDON_LOADED(event, arg1)
 
 	-- initialize on the currently shown frame
 	ScanFollowerAbilities()
-	addon:GARRISON_FOLLOWER_LIST_UPDATE()
-	-- C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE)
+	C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE)
 	-- update minimap icon tooltip if it's currently shown
 	if addon.db.showMinimapBuildings and GameTooltip:GetOwner() == minimapButton then
 		minimapButton:GetScript('OnEnter')(minimapButton)

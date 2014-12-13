@@ -1,6 +1,8 @@
 local addonName, addon, _ = ...
 
 addon.L = {
+	showTabs                     = 'Show threat tabs',
+	showTabsDesc                 = 'Display counterable threats as tabs that attach to several garrison frames.',
 	showMinimapBuildings         = 'Show buildings in minimap tooltip',
 	showMinimapBuildingsDesc     = 'Display active buildings in the Garrison minimap tooltip',
 	skipBattleAnimation          = 'Skip battle animation',
@@ -8,7 +10,7 @@ addon.L = {
 	setMissionFrameMovable       = 'Move MissionFrame',
 	setMissionFrameMovableDesc   = 'Allow the mission frame to be moved.|n' .. _G.RED_FONT_COLOR_CODE..'This requires a reload.',
 	doubleClickToAddFollower     = 'Double-click to add followers',
-	doubleClickToAddFollowerDesc = 'Add followers to the current mission when double-clicking them in the follower list.',
+	doubleClickToAddFollowerDesc = 'Add followers to the current mission by double-clicking them in the follower list.',
 	notifyLevelQualityChange     = 'Print follower changes',
 	notifyLevelQualityChangeDesc = 'Print a message to chat whenever a follower gains a level or improves in quality.',
 	replaceAbilityWithThreat     = 'Replace tooltip icons',
@@ -26,7 +28,7 @@ addon.L = {
 	desaturateUnavailable        = 'Fade uncountered threats',
 	desaturateUnavailableDesc    = 'Fade out threats that cannot be countered with your followers.',
 	showRequiredResources        = 'Show required resources',
-	showRequiredResourcesDesc    = 'Add the amount of resources required for each mission after its duration.',
+	showRequiredResourcesDesc    = 'Append the amount of required resources to mission duration texts.',
 	showOnMissionCounters        = 'Show counters when on mission',
 	showOnMissionCountersDesc    = 'Display counters for followers that are currently on a mission.',
 	showFollowerReturnTime       = 'Show return time',

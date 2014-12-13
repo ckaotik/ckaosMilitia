@@ -8,4 +8,5 @@
 ## LoadWith: Blizzard_GarrisonUI
 
 locale.lua
+config.lua
 ckaosMilitia.lua

@@ -14,7 +14,7 @@ addon.frame:SetScript('OnEvent', function(self, event, ...)
 end)
 addon.frame:RegisterEvent('ADDON_LOADED')
 
-local defaults = {
+addon.defaults = {
 	skipBattleAnimation = true,
 	showExtraMissionInfo = true,
 	showMissionThreats = true,
@@ -503,14 +503,14 @@ function addon:ADDON_LOADED(event, arg1)
 
 	-- remove outdated settings
 	for key, value in pairs(addon.db) do
-		if defaults[key] == nil then
+		if addon.defaults[key] == nil then
 			addon.db[key] = nil
 		end
 	end
 	-- automatically add unregistered settings
 	setmetatable(addon.db, {
 		__index = function(db, key)
-			db[key] = defaults[key]
+			db[key] = addon.defaults[key]
 			return db[key]
 		end,
 	})
@@ -522,35 +522,6 @@ function addon:ADDON_LOADED(event, arg1)
 			addon.GARRISON_FOLLOWER_LIST_UPDATE()
 		end
 	end
-	local minimapButton = GarrisonLandingPageMinimapButton
-	local configDropDown = CreateFrame('Frame', '$parent'..addonName..'ConfigDropDown', minimapButton, 'UIDropDownMenuTemplate')
-	configDropDown.displayMode = 'MENU'
-	configDropDown.initialize = function(self, level, menuList)
-		local info = UIDropDownMenu_CreateInfo()
-		info.func = ConfigDropDown_OnClick
-		info.isNotRadio = true
-		info.tooltipOnButton = true
-
-		for setting, value in pairs(defaults) do
-			info.value   = setting
-			info.checked = addon.db[setting]
-			info.text         = addon.L[setting]
-			info.tooltipTitle = addon.L[setting]
-			info.tooltipText  = addon.L[setting..'Desc']
-			UIDropDownMenu_AddButton(info, level)
-		end
-	end
-
-	-- TODO: alternative would be a LDB plugin
-	local onClick = minimapButton:GetScript('OnClick')
-	minimapButton:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
-	minimapButton:SetScript('OnClick', function(self, btn, up)
-		if btn == 'RightButton' then
-			ToggleDropDownMenu(nil, nil, configDropDown, 'cursor')
-		elseif onClick then
-			onClick(self, btn, up)
-		end
-	end)
 
 	-- register events
 	addon.frame:RegisterEvent('GARRISON_MISSION_NPC_OPENED')
@@ -572,6 +543,7 @@ function addon:ADDON_LOADED(event, arg1)
 		UpdateFollowerTabs(GarrisonRecruitSelectFrame)
 	end)
 
+	local minimapButton = GarrisonLandingPageMinimapButton
 	minimapButton:HookScript('OnEnter', ShowMinimapBuildings)
 	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do
 		button:HookScript('OnDoubleClick', FollowerOnDoubleClick)
@@ -584,13 +556,13 @@ function addon:ADDON_LOADED(event, arg1)
 		frame:SetScript('OnLeave', GarrisonMissionPageFollowerFrame_OnLeave)
 	end
 
-	-- initialize on the currently shown frame
 	ScanFollowerAbilities()
-	C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE)
 	-- update minimap icon tooltip if it's currently shown
 	if addon.db.showMinimapBuildings and GameTooltip:GetOwner() == minimapButton then
 		minimapButton:GetScript('OnEnter')(minimapButton)
 	end
+	-- initialize on the currently shown frame
+	C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE)
 
 	if addon.db.setMissionFrameMovable then
 		local frame = GarrisonMissionFrame

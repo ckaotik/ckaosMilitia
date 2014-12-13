@@ -5,17 +5,30 @@ WoW Addon: Keep track of your garrison missions and followers.
 
 Features
 --------
-- Shows all available danger counters, how many followers qualify and what their current state is
+General:
+- Shows all available threat counters, how many followers qualify and what their current state is
   - attaches to mission list, recruiter and report frames
   - shows return time for followers that are currently on missions
+- Replace ability icons with their countered threat
+  - applies to follower list and follower tooltips
+- Display a quick list of your garrison's buildings when hovering the garrison minimap icon
+
+Mission complete enhancements:
 - Allows to skip battle animations to get right to the juicy loot
+- Enables follower tooltips
+- Prints to chat when a follower learned new abilities
+
+Mission list enhancements:
 - Shows the amount of followers required for a mission
 - Shows the dangers to face in each mission
   - threats that cannot be countered with available followers are faded out
-- Shows the success chance for active missions
 - Shows the amount or quality-colored item level for mission rewards
+- Shows the amount of resources required to start a mission
+  - colored red when not sufficient
+- Shows the success chance for active missions
 
-Several settings are available within the .lua file. Simply change values to `true` to enable or `false` to disable.
+Almost all features can be disabled in the ingame config panel.
+Please note: This panel is only available after you've opened any garrison frame!
 
 Screenshots
 -----------

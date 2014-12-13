@@ -409,7 +409,7 @@ local function ShowMinimapBuildings(self, motion)
 	for i, building in ipairs(buildings) do
 		if i == 1 then GameTooltip:AddLine(' ') end
 		local _, name, _, icon, description, rank, _, _, _, _, _, _, _, upgrades, canUpgrade, isMaxLevel, _, _, _, _, isBeingBuilt, _, _, _, canCompleteBuild = C_Garrison.GetOwnedBuildingInfo(building.plotID)
-		local bonusText, resources, gold, _, buildTime, needsPlan = C_Garrison.GetBuildingTooltip(upgrades[rank+1] or 0)
+		local bonusText, resources, gold, _, buildTime, needsPlan = C_Garrison.GetBuildingTooltip(upgrades and upgrades[rank+1] or 0)
 
 		local infoText = _G.GARRISON_BUILDING_LEVEL_TOOLTIP_TEXT:format(rank)
 		if canCompleteBuild then

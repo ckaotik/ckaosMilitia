@@ -29,6 +29,7 @@ local defaults = {
 	doubleClickToAddFollower = true,
 	replaceAbilityWithThreat = true,
 	missionCompleteFollowerTooltips = true,
+	showTabs = true,
 }
 
 local propertyOrder = {'iLevel', 'level', 'quality', 'name'}
@@ -170,7 +171,7 @@ end
 
 local function UpdateFollowerTabs(frame)
 	-- don't update for invisible frames
-	if not frame or not frame:IsShown() then return end
+	if not addon.db.showTabs or not frame or not frame:IsShown() then return end
 
 	ScanFollowerAbilities()
 	local index = 1
@@ -436,6 +437,13 @@ local function TooltipReplaceAbilityWithThreat(tooltipFrame, data)
 	end
 end
 
+local function FollowerListReplaceAbilityWithThreat(self, index, ability)
+	if addon.db.replaceAbilityWithThreat and not ability.isTrait then
+		local _, _, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(ability.id)
+		self.Abilities[index].Icon:SetTexture(icon)
+	end
+end
+
 -- --------------------------------------------------------
 --  Event handlers
 -- --------------------------------------------------------
@@ -475,8 +483,6 @@ function addon:GARRISON_FOLLOWER_XP_CHANGED(...)
 		newSkills = (newSkills and newSkills..' and ' or '') .. C_Garrison.GetFollowerAbilityLink(traitID)
 
 		print(('%1$s%2$s|r turned %4$s%3$s|r and learned %5$s'):format(color, name, _G['BATTLE_PET_BREED_QUALITY'..(quality+1)], _G.ITEM_QUALITY_COLORS[quality].hex, newSkills))
-	elseif level > oldLevel then
-		print(('%1$s%2$s|r turned %4$d!'):format(color, name, oldLevel, level))
 	end
 end
 
@@ -545,16 +551,17 @@ function addon:ADDON_LOADED(event, arg1)
 
 	-- setup hooks
 	hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)
+	hooksecurefunc('GarrisonMissionPage_ClearParty', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
 	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', ShowOnMissionCounters)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
+	hooksecurefunc('GarrisonFollowerButton_AddAbility', FollowerListReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
 		UpdateFollowerTabs(GarrisonRecruitSelectFrame)
 	end)
 
-	GarrisonMissionFrame.MissionTab.MissionPage.CloseButton:HookScript('OnClick', UpdateMissionList)
 	minimapButton:HookScript('OnEnter', ShowMinimapBuildings)
 	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do
 		button:HookScript('OnDoubleClick', FollowerOnDoubleClick)

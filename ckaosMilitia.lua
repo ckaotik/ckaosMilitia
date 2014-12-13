@@ -148,7 +148,7 @@ local function ShowAbilityTooltip(self)
 	GameTooltip:Show()
 end
 
-local function GetTab(frame, index)
+local function GetTab(index)
 	local tab = addon[index]
 	if not tab then
 		tab = CreateFrame('CheckButton', nil, nil, 'SpellBookSkillLineTabTemplate', index)
@@ -162,16 +162,19 @@ local function GetTab(frame, index)
 		tab.count = count
 		addon[index] = tab
 	end
-
-	tab:SetParent(frame)
-	tab:ClearAllPoints()
-	tab:SetPoint('TOPLEFT', frame, 'TOPRIGHT', frame == GarrisonLandingPage and -10 or 0, 16 - 44*index)
 	return tab
 end
 
 local function UpdateFollowerTabs(frame)
-	-- don't update for invisible frames
-	if not addon.db.showTabs or not frame or not frame:IsShown() then return end
+	if not addon.db.showTabs then
+		for index, tab in ipairs(addon) do
+			tab:SetParent(nil)
+			tab:Hide()
+		end
+	elseif not frame or not frame:IsShown() then
+		-- don't update for invisible frames
+		return
+	end
 
 	ScanFollowerAbilities()
 	local index = 1
@@ -188,13 +191,17 @@ local function UpdateFollowerTabs(frame)
 			end
 		end
 
-		local tab = GetTab(frame, index)
-		tab.threatID = threatID
 		local threatInfo = mechanics[threatID]
+		local tab = GetTab(index)
+		tab:SetParent(frame)
+		tab:ClearAllPoints()
+		tab:SetPoint('TOPLEFT', frame, 'TOPRIGHT', frame == GarrisonLandingPage and -10 or 0, 16 - 44*index)
 		tab:SetNormalTexture(threatInfo.icon)
+		tab:Show()
+		tab.count:SetText(numAvailable ~= numFollowers and ('%d/%d'):format(numAvailable, numFollowers) or numFollowers)
 		tab.tooltip = ('|T%1$s:0|t %2$s'):format(threatInfo.icon, threatInfo.name)
 		tab.description = threatInfo.description
-		tab.count:SetText(numAvailable ~= numFollowers and ('%d/%d'):format(numAvailable, numFollowers) or numFollowers)
+		tab.threatID = threatID
 		index = index + 1
 	end
 end
@@ -510,7 +517,10 @@ function addon:ADDON_LOADED(event, arg1)
 
 	local function ConfigDropDown_OnClick(info)
 		addon.db[info.value] = not addon.db[info.value]
-		-- TODO: trigger updates
+		-- apply updates
+		if info.value == 'showTabs' then
+			addon.GARRISON_FOLLOWER_LIST_UPDATE()
+		end
 	end
 	local minimapButton = GarrisonLandingPageMinimapButton
 	local configDropDown = CreateFrame('Frame', '$parent'..addonName..'ConfigDropDown', minimapButton, 'UIDropDownMenuTemplate')

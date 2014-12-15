@@ -10,13 +10,12 @@ General:
   - attaches to mission list, recruiter and report frames
   - shows return time for followers that are currently on missions
 - Replace ability icons with their countered threat
-  - applies to follower list and follower tooltips
-- Display a quick list of your garrison's buildings when hovering the garrison minimap icon
+  - applies to expanded followers in list and compact follower tooltips
+- Display a short list of your garrison's buildings when hovering the garrison minimap icon
 
 Mission complete enhancements:
 - Allows to skip battle animations to get right to the juicy loot
 - Enables follower tooltips
-- Prints to chat when a follower learned new abilities
 
 Mission list enhancements:
 - Shows the amount of followers required for a mission
@@ -28,7 +27,7 @@ Mission list enhancements:
 - Shows the success chance for active missions
 
 Almost all features can be disabled in the ingame config panel.
-Please note: This panel is only available after you've opened any garrison frame!
+This is a load-on-demand addon. Therefore none of the functionality (including the config panel) is available until you trigger the addon to load, e.g. by opening any garrison dialog.
 
 Screenshots
 -----------

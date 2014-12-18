@@ -65,7 +65,9 @@ local function ScanFollowerAbilities(followerID, data)
 		if not ability.isTrait or ability.id == 232 then
 			local mechanicID, mechanicInfo = next(ability.counters)
 			if not abilities[mechanicID] then abilities[mechanicID] = {} end
-			tinsert(abilities[mechanicID], followerID)
+			if not tContains(abilities[mechanicID], followerID) then
+				tinsert(abilities[mechanicID], followerID)
+			end
 			if not mechanics[mechanicID] then
 				-- store reference to info table
 				mechanics[mechanicID] = mechanicInfo
@@ -96,7 +98,7 @@ local function GetMissionTimeLeft(followerID)
 	end
 end
 
-local function ShowAbilityTooltip(self)
+local function ThreatOnEnter(self)
 	local followers = self.threatID and abilities[self.threatID]
 	if not followers then return end
 
@@ -137,12 +139,23 @@ local function ShowAbilityTooltip(self)
 	GameTooltip:Show()
 end
 
+local function ThreatOnClick(self, btn, up)
+	self:SetChecked(false)
+	local list = self:GetParent().FollowerList
+	if not list or not list:IsShown() or not list.SearchBox then return end
+	local mechanic = mechanics[self.threatID]
+	local text = btn == 'RightButton' and '' or mechanic.name
+	list.SearchBox:SetText(text)
+	GarrisonFollowerList_UpdateFollowers(list)
+end
+
 local function GetTab(index)
 	local tab = addon[index]
 	if not tab then
 		tab = CreateFrame('CheckButton', nil, nil, 'SpellBookSkillLineTabTemplate', index)
-		tab:HookScript('OnEnter', ShowAbilityTooltip)
-		tab:RegisterForClicks() -- disable clicking
+		tab:HookScript('OnEnter', ThreatOnEnter)
+		tab:SetScript('OnClick', ThreatOnClick)
+		tab:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
 		tab:Show()
 		local count = tab:CreateFontString(nil, nil, 'NumberFontNormalSmall')
 		      count:SetAllPoints()
@@ -208,6 +221,9 @@ end
 -- add extra info to mission list for easier overview
 local followerSlotIcon = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0:0:0:0:32:32:4:26:4:26|t'
 local function UpdateMissionList()
+	GarrisonMissionFrame.FollowerList.SearchBox:SetText('')
+	-- GarrisonFollowerList_UpdateFollowers(GarrisonMissionFrame.FollowerList)
+
 	if not addon.db.showExtraMissionInfo then return end
 	local self     = GarrisonMissionFrame.MissionTab.MissionList
 	local active   = self.showInProgress

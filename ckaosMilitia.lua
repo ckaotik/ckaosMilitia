@@ -29,53 +29,13 @@ addon.defaults = {
 	showRequiredResources = true,
 	setMissionFrameMovable = true,
 	showOnMissionCounters = true,
+	showFollowerAbilityOptions = true,
 	showMinimapBuildings = true,
 	doubleClickToAddFollower = true,
 	replaceAbilityWithThreat = true,
 	missionCompleteFollowerTooltips = true,
 	showTabs = true,
 }
-
--- these numbers match the ingame .classSpec values
-local _, bdk, fdk, udk, bdruid, _, fdruid, gdruid, rdruid, bhunter, _, mhunter, shunter, amage, firemage, fmage, bmonk, mmonk, wmonk, hpala, ppala, rpala, dpriest, hpriest, spriest, arogue, crogue, srogue, eleshaman, enhshaman, rshaman, alock, demolock, dlock, awarri, _, fwarri, pwarri = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38
-local abilityClasses = {
-	[1] = { -- wild aggression
-		fdk, udk, bdk, gdruid, fdruid, bhunter, bmonk, wmonk, ppala, awarri, pwarri,
-	},
-	[2] = { -- massive strike
-		fdruid, gdruid, bdk, udk, shunter, rpala, ppala, fmage, bmonk, arogue, srogue, dlock, pwarri, fwarri,
-	},
-	[3] = { -- group damage
-		rshaman, mmonk, dlock, hpala, hpriest, dpriest, rdruid,
-	},
-	[4] = { -- magic debuff
-		fdk, rdruid, mmonk, hpala, ppala, hpriest, dpriest, spriest, rshaman, alock,
-	},
-	[6] = { -- danger zones
-		fdruid, gdruid, bdruid, shunter, mhunter, bhunter, amage, firemage, wmonk, bmonk, mmonk, hpriest, dpriest, spriest, arogue, srogue, crogue, enhshaman, awarri, fwarri, pwarri,
-	},
-	[7]  = { -- minion swarms
-		fdk, bdk, udk, bdruid, rdruid, shunter, mhunter, bhunter, fmage, firemage, rpala, hpriest, spriest, crogue, srogue, rshaman, eleshaman, enhshaman, alock, demolock, awarri, fwarri, pwarri,
-	},
-	[8] = { -- powerful spell
-		fdk, bdk, udk, mhunter, fmage, firemage, amage, mmonk, wmonk, rpala, hpala, ppala, arogue, srogue, crogue, eleshaman, rshaman, alock, demolock, dlock, awarri, fwarri, pwarri,
-	},
-	[9] = { -- deadly minions
-		rdruid, gdruid, bdruid, shunter, mhunter, bhunter, fmage, firemage, amage, bmonk, wmonk, rpala, hpala, ppala, dpriest, spriest, arogue, srogue, crogue, eleshaman, enhshaman, alock, dlock,
-	},
-	[10]  = { -- timed battle, multiples: druid, mage, warlock
-		fdk, bdk, udk, rdruid, gdruid, bdruid, fdruid, shunter, mhunter, bhunter, fmage, firemage, amage, wmonk, mmonk, rpala, hpala, hpriest, dpriest, spriest, arogue, crogue, rshaman, eleshaman, enhshaman, alock, demolock, dlock, awarri, fwarri,
-	},
-}
---[[
--- local bdk, fdk, udk, bdruid, fdruid, gdruid, rdruid, bhunter, mhunter, shunter, amage, firemage, fmage, bmonk, mmonk, wmonk, hpala, ppala, rpala, dpriest, hpriest, spriest, arogue, crogue, srogue, rshaman, eleshaman, enhshaman, alock, demolock, dlock, awarri, fwarri, pwarri = 250, 251, 252, 102, 103, 104, 105, 253, 254, 255, 62, 63, 64, 268, 270, 269, 65, 66, 70, 256, 257, 258, 259, 260, 261, 264, 262, 263, 265, 266, 267, 71, 72, 73
-for threatID, specs in pairs(abilityClasses) do
-	for i, specID in pairs(specs) do
-		-- translate spec ids into localized spec names
-		specs[i] = select(2, GetSpecializationInfoByID(specID))
-	end
-end --]]
--- TODO: supply this info somewhere
 
 local propertyOrder = {'GetFollowerItemLevelAverage', 'GetFollowerLevel', 'GetFollowerQuality', 'GetFollowerName'}
 local function SortFollowers(followerA, followerB)
@@ -504,6 +464,67 @@ local function FollowerListReplaceAbilityWithThreat(self, index, ability)
 	end
 end
 
+-- these numbers match the ingame .classSpec values
+local _, bdk, fdk, udk, bdruid, _, fdruid, gdruid, rdruid, bhunter, _, mhunter, shunter, amage, firemage, fmage, bmonk, mmonk, wmonk, hpala, ppala, rpala, dpriest, hpriest, spriest, arogue, crogue, srogue, eleshaman, enhshaman, rshaman, alock, demolock, dlock, awarri, _, fwarri, pwarri = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38
+local abilityClasses = {
+	[1] = { -- wild aggression
+		fdk, udk, bdk, gdruid, fdruid, bhunter, bmonk, wmonk, ppala, awarri, pwarri,
+	},
+	[2] = { -- massive strike
+		fdruid, gdruid, bdk, udk, shunter, rpala, ppala, fmage, bmonk, arogue, srogue, dlock, pwarri, fwarri,
+	},
+	[3] = { -- group damage
+		rshaman, mmonk, dlock, hpala, hpriest, dpriest, rdruid,
+	},
+	[4] = { -- magic debuff
+		fdk, rdruid, mmonk, hpala, ppala, hpriest, dpriest, spriest, rshaman, alock,
+	},
+	[6] = { -- danger zones
+		fdruid, gdruid, bdruid, shunter, mhunter, bhunter, amage, firemage, wmonk, bmonk, mmonk, hpriest, dpriest, spriest, arogue, srogue, crogue, enhshaman, awarri, fwarri, pwarri,
+	},
+	[7]  = { -- minion swarms
+		fdk, bdk, udk, bdruid, rdruid, shunter, mhunter, bhunter, fmage, firemage, rpala, hpriest, spriest, crogue, srogue, rshaman, eleshaman, enhshaman, alock, demolock, awarri, fwarri, pwarri,
+	},
+	[8] = { -- powerful spell
+		fdk, bdk, udk, mhunter, fmage, firemage, amage, mmonk, wmonk, rpala, hpala, ppala, arogue, srogue, crogue, eleshaman, rshaman, alock, demolock, dlock, awarri, fwarri, pwarri,
+	},
+	[9] = { -- deadly minions
+		rdruid, gdruid, bdruid, shunter, mhunter, bhunter, fmage, firemage, amage, bmonk, wmonk, rpala, hpala, ppala, dpriest, spriest, arogue, srogue, crogue, eleshaman, enhshaman, alock, dlock,
+	},
+	[10]  = { -- timed battle, multiples: druid, mage, warlock
+		fdk, bdk, udk, rdruid, gdruid, bdruid, fdruid, shunter, mhunter, bhunter, fmage, firemage, amage, wmonk, mmonk, rpala, hpala, hpriest, dpriest, spriest, arogue, crogue, rshaman, eleshaman, enhshaman, alock, demolock, dlock, awarri, fwarri,
+	},
+}
+local function FollowerAbilityOptions(self, followerID)
+	local options = _G[addonName..'FollowerAbilityOptions']
+	if not self.followerID or not addon.db.showFollowerAbilityOptions then
+		if options then options:SetText('') end
+		return
+	end
+
+	local spec = C_Garrison.GetFollowerClassSpec(followerID)
+	local canLearn = ''
+	for threatID, classSpecs in pairs(abilityClasses) do
+		if tContains(classSpecs, spec) then
+			local icon = mechanics[threatID] and mechanics[threatID].icon or ''
+			canLearn = canLearn .. '|T'..icon..':0|t '
+		end
+	end
+	if canLearn == '' then
+		if options then options:SetText('') end
+		return
+	end
+
+	if not options then
+		options = self:CreateFontString(addonName..'FollowerAbilityOptions', nil, 'GameFontNormalLarge2')
+		options:SetJustifyH('LEFT')
+		options:SetJustifyV('TOP')
+	end
+	options:SetParent(self)
+	options:SetPoint('TOPLEFT', self.AbilitiesFrame.AbilitiesText, 'TOPRIGHT', 0, 0)
+	options:SetFormattedText(_G.DECLENSION_SET, '', canLearn)
+end
+
 -- --------------------------------------------------------
 --  Event handlers
 -- --------------------------------------------------------
@@ -589,6 +610,7 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', ShowOnMissionCounters)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonFollowerButton_AddAbility', FollowerListReplaceAbilityWithThreat)
+	hooksecurefunc('GarrisonFollowerPage_ShowFollower', FollowerAbilityOptions)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
 		UpdateFollowerTabs(GarrisonRecruitSelectFrame)
 	end)

@@ -9,6 +9,10 @@ _G[addonName] = addon
 local tinsert, tsort = table.insert, table.sort
 local emptyTable = {}
 
+-- issue: open mission, close mission, title will not be aligned properly
+-- issue: UI blames excessive memory usage on us, also we supposedly taint
+-- issue: mission fails, follower tab counts are not updated
+
 addon.frame = CreateFrame('Frame')
 addon.frame:SetScript('OnEvent', function(self, event, ...)
 	if addon[event] then addon[event](addon, event, ...) end
@@ -69,11 +73,12 @@ local function ScanFollowerAbilities(followerID, data)
 		end
 	end
 end
-local function ScanAllFollowerAbilities()
+local function ScanAllFollowerAbilities(followerList)
 	for abilityID, followers in pairs(abilities) do
 		wipe(followers)
 	end
-	for index, info in pairs(C_Garrison.GetFollowers()) do
+	-- if possible, reuse existing list
+	for index, info in pairs(followerList or C_Garrison.GetFollowers()) do
 		if info.isCollected then
 			ScanFollowerAbilities(info.followerID, info)
 		end
@@ -159,6 +164,7 @@ local function UpdateFollowerTabs(frame)
 		-- don't update for invisible frames
 		return
 	end
+	-- print('UpdateFollowerTabs', frame.FollowerList.followers and #frame.FollowerList.followers)
 
 	local index = 1
 	for threatID, followers in pairs(abilities) do
@@ -454,9 +460,15 @@ end
 function addon:GARRISON_SHOW_LANDING_PAGE()
 	UpdateFollowerTabs(GarrisonLandingPage)
 end
+-- follower returns from mission
+-- function addon:GARRISON_MISSION_COMPLETE_RESPONSE(missionID, canComplete, isSuccess)
+--	UpdateFollowerTabs(GarrisonMissionFrame)
+-- end
+local frames = {GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
 	-- TODO: we could probably pick more suitable events/hooks for these actions
-	for _, frame in pairs({GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}) do
+	-- this tracks: => work, => mission, => inactive, and probably more
+	for _, frame in pairs(frames) do
 		UpdateFollowerTabs(frame)
 	end
 end
@@ -506,8 +518,8 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('GARRISON_MISSION_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_SHOW_LANDING_PAGE')
-	addon.frame:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')
+	addon.frame:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_ADDED')
 	addon.frame:RegisterEvent('UNIT_SPELL_CAST_SUCCEEDED')
 

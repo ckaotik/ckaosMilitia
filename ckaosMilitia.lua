@@ -502,7 +502,8 @@ local function FollowerAbilityOptions(self, followerID)
 		return
 	end
 
-	local spec = C_Garrison.GetFollowerClassSpec(followerID)
+	-- unowned followers use generic *ByID(followerID) while owned use *(garrFollowerID)
+	local spec = C_Garrison.GetFollowerClassSpecByID(followerID) or C_Garrison.GetFollowerClassSpec(followerID)
 	local canLearn = ''
 	for threatID, classSpecs in pairs(abilityClasses) do
 		if tContains(classSpecs, spec) then

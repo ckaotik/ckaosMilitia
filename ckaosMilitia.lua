@@ -470,30 +470,39 @@ local _, bdk, fdk, udk, bdruid, _, fdruid, gdruid, rdruid, bhunter, _, mhunter, 
 local abilityClasses = {
 	[1] = { -- wild aggression
 		fdk, udk, bdk, gdruid, fdruid, bhunter, bmonk, wmonk, ppala, awarri, pwarri,
+		icon = 'Interface\\ICONS\\Spell_Nature_Reincarnation',
 	},
 	[2] = { -- massive strike
 		fdruid, gdruid, bdk, udk, shunter, rpala, ppala, fmage, bmonk, arogue, srogue, dlock, pwarri, fwarri,
+		icon = 'Interface\\ICONS\\Ability_Warrior_SavageBlow',
 	},
 	[3] = { -- group damage
 		rshaman, mmonk, dlock, hpala, hpriest, dpriest, rdruid,
+		icon = 'Interface\\ICONS\\Spell_Fire_SelfDestruct',
 	},
 	[4] = { -- magic debuff
 		fdk, rdruid, mmonk, hpala, ppala, hpriest, dpriest, spriest, rshaman, alock,
+		icon = 'Interface\\ICONS\\Spell_Shadow_ShadowWordPain',
 	},
 	[6] = { -- danger zones
 		fdruid, gdruid, bdruid, shunter, mhunter, bhunter, amage, firemage, wmonk, bmonk, mmonk, hpriest, dpriest, spriest, arogue, srogue, crogue, enhshaman, awarri, fwarri, pwarri,
+		icon = 'Interface\\ICONS\\spell_Shaman_Earthquake',
 	},
 	[7]  = { -- minion swarms
 		fdk, bdk, udk, bdruid, rdruid, shunter, mhunter, bhunter, fmage, firemage, rpala, hpriest, spriest, crogue, srogue, rshaman, eleshaman, enhshaman, alock, demolock, awarri, fwarri, pwarri,
+		icon = 'Interface\\ICONS\\Spell_DeathKnight_ArmyOfTheDead',
 	},
 	[8] = { -- powerful spell
 		fdk, bdk, udk, mhunter, fmage, firemage, amage, mmonk, wmonk, rpala, hpala, ppala, arogue, srogue, crogue, eleshaman, rshaman, alock, demolock, dlock, awarri, fwarri, pwarri,
+		icon = 'Interface\\ICONS\\Spell_Shadow_ShadowBolt',
 	},
 	[9] = { -- deadly minions
 		rdruid, gdruid, bdruid, shunter, mhunter, bhunter, fmage, firemage, amage, bmonk, wmonk, rpala, hpala, ppala, dpriest, spriest, arogue, srogue, crogue, eleshaman, enhshaman, alock, dlock,
+		icon = 'Interface\\ICONS\\Achievement_Boss_TwinOrcBrutes',
 	},
 	[10]  = { -- timed battle, multiples: druid, mage, warlock
 		fdk, bdk, udk, rdruid, gdruid, bdruid, fdruid, shunter, mhunter, bhunter, fmage, firemage, amage, wmonk, mmonk, rpala, hpala, hpriest, dpriest, spriest, arogue, crogue, rshaman, eleshaman, enhshaman, alock, demolock, dlock, awarri, fwarri,
+		icon = 'Interface\\ICONS\\SPELL_HOLY_BORROWEDTIME',
 	},
 }
 local function FollowerAbilityOptions(self, followerID)
@@ -507,11 +516,11 @@ local function FollowerAbilityOptions(self, followerID)
 	-- unowned followers use generic *ByID(followerID) while owned use *(garrFollowerID)
 	local spec = C_Garrison.GetFollowerClassSpecByID(followerID) or C_Garrison.GetFollowerClassSpec(followerID)
 	local canLearn = ''
-	for threatID, classSpecs in pairs(abilityClasses) do
-		if tContains(classSpecs, spec) then
-			local icon = mechanics[threatID] and mechanics[threatID].icon or ''
+	for threatID, counters in pairs(abilityClasses) do
+		if tContains(counters, spec) then
 			canLearn = canLearn .. (canLearn ~= '' and ' ' or '')
-				.. '|T'..icon..(isRecruit and ':18:18:0:-2' or ':16:16:0:2')..'|t'
+				.. '|T'..(mechanics[threatID] and mechanics[threatID].icon or counters.icon)
+				.. (isRecruit and ':18:18:0:-2' or ':16:16:0:2') .. '|t'
 		end
 	end
 	if canLearn == '' then
@@ -534,7 +543,7 @@ local function FollowerAbilityOptions(self, followerID)
 	else
 		options:SetParent(self)
 		options:SetPoint('TOPLEFT', self.ClassSpec, 'TOPRIGHT', 0, 0)
-		options:SetText(' – can learn ' .. canLearn)
+		options:SetText(' – learns ' .. canLearn)
 	end
 end
 

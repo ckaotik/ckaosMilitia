@@ -458,6 +458,7 @@ local function TooltipReplaceAbilityWithThreat(tooltipFrame, data)
 end
 
 local function FollowerListReplaceAbilityWithThreat(self, index, ability)
+	-- TODO: this does not yet work on landing page
 	if addon.db.replaceAbilityWithThreat and not ability.isTrait then
 		local _, _, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(ability.id)
 		self.Abilities[index].Icon:SetTexture(icon)
@@ -496,8 +497,9 @@ local abilityClasses = {
 	},
 }
 local function FollowerAbilityOptions(self, followerID)
-	local options = _G[addonName..'FollowerAbilityOptions']
-	if not self.followerID or not addon.db.showFollowerAbilityOptions then
+	local isRecruit = not self.AbilitiesFrame
+	local options = not isRecruit and _G[addonName..'FollowerAbilityOptions'] or self.abilityOptions
+	if (not isRecruit and not self.followerID) or not addon.db.showFollowerAbilityOptions then
 		if options then options:SetText('') end
 		return
 	end
@@ -508,7 +510,8 @@ local function FollowerAbilityOptions(self, followerID)
 	for threatID, classSpecs in pairs(abilityClasses) do
 		if tContains(classSpecs, spec) then
 			local icon = mechanics[threatID] and mechanics[threatID].icon or ''
-			canLearn = canLearn .. '|T'..icon..':0|t '
+			canLearn = canLearn .. (canLearn ~= '' and ' ' or '')
+				.. '|T'..icon..(isRecruit and ':18:18:0:-2' or ':16:16:0:2')..'|t'
 		end
 	end
 	if canLearn == '' then
@@ -517,13 +520,22 @@ local function FollowerAbilityOptions(self, followerID)
 	end
 
 	if not options then
-		options = self:CreateFontString(addonName..'FollowerAbilityOptions', nil, 'GameFontNormalLarge2')
+		local optionsName = not isRecruit and addonName..'FollowerAbilityOptions' or '$parentAbilityOptions'
+		options = self:CreateFontString(optionsName, nil, 'GameFontHighlight')
 		options:SetJustifyH('LEFT')
 		options:SetJustifyV('TOP')
+		if isRecruit then
+			self.abilityOptions = options
+		end
 	end
-	options:SetParent(self)
-	options:SetPoint('TOPLEFT', self.AbilitiesFrame.AbilitiesText, 'TOPRIGHT', 0, 0)
-	options:SetFormattedText(_G.DECLENSION_SET, '', canLearn)
+	if isRecruit then
+		options:SetPoint('TOPLEFT', self.Traits, 'BOTTOMLEFT', 0, -2)
+		options:SetText('Learnable counters' .. '|n' .. canLearn)
+	else
+		options:SetParent(self)
+		options:SetPoint('TOPLEFT', self.ClassSpec, 'TOPRIGHT', 0, 0)
+		options:SetText(' – can learn ' .. canLearn)
+	end
 end
 
 -- --------------------------------------------------------
@@ -614,6 +626,9 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonFollowerPage_ShowFollower', FollowerAbilityOptions)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
 		UpdateFollowerTabs(GarrisonRecruitSelectFrame)
+		for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do
+			FollowerAbilityOptions(GarrisonRecruitSelectFrame.FollowerSelection['Recruit'..i], follower.followerID)
+		end
 	end)
 
 	-- show garrison buildings in minimap button tooltip

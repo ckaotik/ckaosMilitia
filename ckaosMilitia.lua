@@ -576,9 +576,9 @@ function addon:GARRISON_FOLLOWER_ADDED(event, followerID, name, displayID, level
 	ScanFollowerAbilities(followerID)
 end
 
-function addon:UNIT_SPELL_CAST_SUCCEEDED(event, unit, _, _, _, spellID)
-	-- follower retraining certificate / hearthstone pro
-	if unit == 'player' and (spellID == 174829 or spellID == 174254) then
+function addon:UNIT_SPELLCAST_SUCCEEDED(event, unit, _, _, _, spellID)
+	-- follower hearthstone pro/learn to dance/retraining
+	if unit == 'player' and (spellID == 174828 or spellID == 174829 or spellID == 174254) then
 		ScanAllFollowerAbilities()
 	end
 end
@@ -612,7 +612,7 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_ADDED')
-	addon.frame:RegisterEvent('UNIT_SPELL_CAST_SUCCEEDED')
+	addon.frame:RegisterEvent('UNIT_SPELLCAST_SUCCEEDED')
 
 	-- setup hooks
 	hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)

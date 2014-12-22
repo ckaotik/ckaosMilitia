@@ -9,7 +9,6 @@ _G[addonName] = addon
 local tinsert, tsort = table.insert, table.sort
 local emptyTable = {}
 
--- issue: open mission, close mission, title will not be aligned properly
 -- issue: UI blames excessive memory usage on us, also we supposedly taint
 -- issue: mission fails, follower tab counts are not updated
 
@@ -310,7 +309,9 @@ local function UpdateMissionList()
 		-- move title text
 		if numThreats > 1 then
 			local anchorFrom, relativeTo, anchorTo, xOffset, yOffset = button.Title:GetPoint()
-			button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
+			if yOffset == 0 then
+				button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
+			end
 		end
 		-- hide unused threat buttons
 		while button.threats[numThreats] do

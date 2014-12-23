@@ -635,7 +635,15 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
 		UpdateFollowerTabs(GarrisonRecruitSelectFrame)
 		for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do
-			FollowerAbilityOptions(GarrisonRecruitSelectFrame.FollowerSelection['Recruit'..i], follower.followerID)
+			local frame = GarrisonRecruitSelectFrame.FollowerSelection['Recruit'..i]
+			FollowerAbilityOptions(frame, follower.followerID)
+			if addon.db.replaceAbilityWithThreat then
+				for k, abilityFrame in ipairs(frame.Abilities.Entries) do
+					if not abilityFrame:IsShown() then break end
+					local _, _, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityFrame.abilityID)
+					abilityFrame.Icon:SetTexture(icon)
+				end
+			end
 		end
 	end)
 

@@ -1,6 +1,7 @@
 ## Interface: 60000
 ## Author: ckaotik
 ## Title: ckaosMilitia
+## Notes: Garrison UI Enhancements
 ## Version: 6.0v9
 ## SavedVariables: ckaosMilitiaDB
 

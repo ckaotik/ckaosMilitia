@@ -9,9 +9,6 @@ _G[addonName] = addon
 local tinsert, tsort = table.insert, table.sort
 local emptyTable = {}
 
--- issue: UI blames excessive memory usage on us, also we supposedly taint
--- issue: mission fails, follower tab counts are not updated
-
 addon.frame = CreateFrame('Frame')
 addon.frame:SetScript('OnEvent', function(self, event, ...)
 	if addon[event] then addon[event](addon, event, ...) end
@@ -552,6 +549,7 @@ end
 --  Event handlers
 -- --------------------------------------------------------
 function addon:GARRISON_MISSION_NPC_OPENED()
+	-- note: this is also triggered on successful mission completion
 	UpdateFollowerTabs(GarrisonMissionFrame)
 end
 function addon:GARRISON_RECRUITMENT_NPC_OPENED()
@@ -561,10 +559,6 @@ end
 function addon:GARRISON_SHOW_LANDING_PAGE()
 	UpdateFollowerTabs(GarrisonLandingPage)
 end
--- follower returns from mission
--- function addon:GARRISON_MISSION_COMPLETE_RESPONSE(missionID, canComplete, isSuccess)
---	UpdateFollowerTabs(GarrisonMissionFrame)
--- end
 local frames = {GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
 	-- TODO: we could probably pick more suitable events/hooks for these actions
@@ -579,6 +573,10 @@ function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerID, xpGain, oldXP, ol
 	if quality > oldQuality and quality == _G.LE_ITEM_QUALITY_EPIC then
 		-- new ability at epic quality
 		ScanFollowerAbilities(followerID)
+	end
+	if addon.db.showTabs then
+		-- follower returned from mission, triggers for every mission follower, base + bonus xp, even at max
+		UpdateFollowerTabs(GarrisonMissionFrame)
 	end
 end
 

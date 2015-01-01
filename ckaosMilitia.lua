@@ -17,6 +17,7 @@ addon.frame:RegisterEvent('ADDON_LOADED')
 
 addon.defaults = {
 	skipBattleAnimation = true,
+	battleAnimDuration = 0,
 	showExtraMissionInfo = true,
 	showMissionThreats = true,
 	showRewardCounts = true,
@@ -212,7 +213,7 @@ local function SkipBattleAnimation(self, missionID, canComplete, success)
 	if not addon.db.skipBattleAnimation then return end
 	self.Stage.EncountersFrame.FadeOut:Play()
 	self.animIndex = GarrisonMissionComplete_FindAnimIndexFor(GarrisonMissionComplete_AnimRewards) - 1
-	self.animTimeLeft = 0
+	self.animTimeLeft = addon.db.battleAnimDuration
 end
 
 -- add extra info to mission list for easier overview

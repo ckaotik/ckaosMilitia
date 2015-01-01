@@ -8,6 +8,10 @@ local function OnClick(self)
 	end
 end
 
+local function OnValueChanged(self, value)
+	addon.db[self.setting] = value
+end
+
 local function OnEnter(self)
 	if not self.setting or not addon.L[self.setting..'Desc'] then return end
 	GameTooltip:SetOwner(self, 'ANCHOR_TOPLEFT')
@@ -17,8 +21,7 @@ local function OnEnter(self)
 end
 
 local function OpenConfiguration(self, args)
-	local i = 1
-	if not self[i] then
+	if not self.label then
 		-- initial load
 		local label = self:CreateFontString(nil, 'OVERLAY', 'GameFontNormalLarge')
 		label:SetPoint('TOPLEFT', 10, -15)
@@ -26,30 +29,64 @@ local function OpenConfiguration(self, args)
 		label:SetJustifyH('LEFT')
 		label:SetJustifyV('TOP')
 		label:SetText(addonName)
+		self.label = label
 	end
 
-	for setting in pairs(addon.defaults) do
-		if not self[i] then
-			local button = CreateFrame('CheckButton', '$parentCheckButton'..i, self, 'OptionsCheckButtonTemplate', i)
-			button:SetHitRectInsets(0, -150, 0, 0)
-			button:SetScript('OnClick', OnClick)
-			button:SetScript('OnEnter', OnEnter)
-			button:SetScript('OnLeave', GameTooltip_Hide)
-			button.text = _G[button:GetName()..'Text']
+	local prevCheckbox = nil
+	if not self.controls then self.controls = {} end
+	for setting, default in pairs(addon.defaults) do
+		if type(default) == 'boolean' then
+			if not self.controls[setting] then
+				local checkbox = CreateFrame('CheckButton', '$parent'..setting:gsub("^%l", string.upper), self, 'OptionsCheckButtonTemplate')
+				checkbox:SetHitRectInsets(0, -150, 0, 0)
+				checkbox:SetScript('OnClick', OnClick)
+				checkbox:SetScript('OnEnter', OnEnter)
+				checkbox:SetScript('OnLeave', GameTooltip_Hide)
+				checkbox.text = _G[checkbox:GetName()..'Text']
+				checkbox.setting = setting
 
-			if i == 1 then
-				button:SetPoint('TOPLEFT', self, 'TOPLEFT', 10, -40)
-			else
-				button:SetPoint('TOPLEFT', self[i-1], 'BOTTOMLEFT', 0, -4)
+				if prevCheckbox then
+					checkbox:SetPoint('TOPLEFT', prevCheckbox, 'BOTTOMLEFT', 0, -4)
+				else
+					checkbox:SetPoint('TOPLEFT', self, 'TOPLEFT', 10, -40)
+				end
+				self.controls[setting] = checkbox
+				prevCheckbox = checkbox
 			end
-			self[i] = button
-		end
 
-		local checkbox = self[i]
-		checkbox:SetChecked(addon.db[setting])
-		checkbox.text:SetText(addon.L[setting] or setting)
-		checkbox.setting = setting
-		i = i + 1
+			local control = self.controls[setting]
+			control:SetChecked(addon.db[setting])
+			control.text:SetText(addon.L[setting] or setting)
+		elseif type(default) == 'number' then
+			if not self.controls[setting] then
+				local slider = CreateFrame('Slider', '$parentSlider'..setting:gsub("^%l", string.upper), self, 'OptionsSliderTemplate')
+				local name = slider:GetName()
+				slider.textLow  = _G[name..'Low']
+				slider.textHigh = _G[name..'High']
+				slider.text     = _G[name..'Text']
+				slider.setting  = setting
+
+				slider:SetScript('OnValueChanged', OnValueChanged)
+				slider:SetScript('OnEnter', OnEnter)
+				slider:SetScript('OnLeave', GameTooltip_Hide)
+
+				if setting == 'battleAnimDuration' then
+					-- TODO: prepare for other sliders as well
+					slider:SetPoint('TOPLEFT', self.controls.skipBattleAnimation, 'TOPRIGHT', 200, -4)
+					slider:SetValueStep(0.25)
+					slider:SetMinMaxValues(0, 10)
+				end
+
+				slider.minValue, slider.maxValue = slider:GetMinMaxValues()
+				slider.textLow:SetText(slider.minValue)
+				slider.textHigh:SetText(slider.maxValue)
+				self.controls[setting] = slider
+			end
+
+			local control = self.controls[setting]
+			control:SetValue(addon.db[setting])
+			control.text:SetText(addon.L[setting] or setting)
+		end
 	end
 
 	if not self:IsVisible() then

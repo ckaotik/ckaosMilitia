@@ -255,6 +255,19 @@ local function UpdateMissionList()
 			button.followers:SetPoint('CENTER', button, 'TOPLEFT', 40, -16)
 		end
 		button.followers:SetText(strrep(followerSlotIcon, mission.numFollowers))
+			
+		-- show item level instead of max level
+		--[[ local quality = mission.iLevel >= 645 and _G.LE_ITEM_QUALITY_EPIC
+				or mission.iLevel >= 630 and _G.LE_ITEM_QUALITY_RARE
+				or mission.iLevel >= 615 and _G.LE_ITEM_QUALITY_UNCOMMON
+				or _G.LE_ITEM_QUALITY_COMMON
+		local color = _G.ITEM_QUALITY_COLORS[quality] --]]
+		if mission.level == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel > 0 then
+			button.Level:SetText(mission.iLevel)
+			-- button.Level:SetTextColor(color.r/2, color.g/2, color.b/2, 1)
+			button.Level:SetPoint('CENTER', button, 'TOPLEFT', 40, -36)
+			button.ItemLevel:Hide()
+		end
 
 		-- show required abilities
 		local _, _, env, envDesc, envIcon, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)

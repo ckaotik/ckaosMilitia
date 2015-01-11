@@ -255,7 +255,7 @@ local function UpdateMissionList()
 			button.followers:SetPoint('CENTER', button, 'TOPLEFT', 40, -16)
 		end
 		button.followers:SetText(strrep(followerSlotIcon, mission.numFollowers))
-			
+
 		-- show item level instead of max level
 		--[[ local quality = mission.iLevel >= 645 and _G.LE_ITEM_QUALITY_EPIC
 				or mission.iLevel >= 630 and _G.LE_ITEM_QUALITY_RARE
@@ -690,6 +690,8 @@ function addon:ADDON_LOADED(event, arg1)
 		local frame = GarrisonMissionFrame
 		      frame:SetMovable(true)
 		frame:CreateTitleRegion():SetAllPoints(frame.TopBorder)
+		GarrisonLandingPage:SetMovable(true)
+		GarrisonLandingPage:CreateTitleRegion():SetAllPoints(GarrisonLandingPage)
 	end
 
 	addon.frame:UnregisterEvent(event)

@@ -34,6 +34,48 @@ addon.defaults = {
 	showTabs = true,
 }
 
+-- map threat counters to follower specIDs (.classSpec values)
+local _, bdk, fdk, udk, bdruid, _, fdruid, gdruid, rdruid, bhunter, _, mhunter, shunter, amage, firemage, fmage, bmonk, mmonk, wmonk, hpala, ppala, rpala, dpriest, hpriest, spriest, arogue, crogue, srogue, eleshaman, enhshaman, rshaman, alock, demolock, dlock, awarri, _, fwarri, pwarri = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38
+local abilityClasses = {
+	[1] = { -- wild aggression
+		fdk, udk, bdk, gdruid, fdruid, bhunter, bmonk, wmonk, ppala, awarri, pwarri,
+		icon = 'Interface\\ICONS\\Spell_Nature_Reincarnation',
+	},
+	[2] = { -- massive strike
+		fdruid, gdruid, bdk, udk, shunter, rpala, ppala, fmage, bmonk, arogue, srogue, dlock, pwarri, fwarri,
+		icon = 'Interface\\ICONS\\Ability_Warrior_SavageBlow',
+	},
+	[3] = { -- group damage
+		rshaman, mmonk, dlock, hpala, hpriest, dpriest, rdruid,
+		icon = 'Interface\\ICONS\\Spell_Fire_SelfDestruct',
+	},
+	[4] = { -- magic debuff
+		fdk, rdruid, mmonk, hpala, ppala, hpriest, dpriest, spriest, rshaman, alock,
+		icon = 'Interface\\ICONS\\Spell_Shadow_ShadowWordPain',
+	},
+	[5] = false, -- threat does not exist
+	[6] = { -- danger zones
+		fdruid, gdruid, bdruid, shunter, mhunter, bhunter, amage, firemage, wmonk, bmonk, mmonk, hpriest, dpriest, spriest, arogue, srogue, crogue, enhshaman, awarri, fwarri, pwarri,
+		icon = 'Interface\\ICONS\\spell_Shaman_Earthquake',
+	},
+	[7]  = { -- minion swarms
+		fdk, bdk, udk, bdruid, rdruid, shunter, mhunter, bhunter, fmage, firemage, rpala, hpriest, spriest, crogue, srogue, rshaman, eleshaman, enhshaman, alock, demolock, awarri, fwarri, pwarri,
+		icon = 'Interface\\ICONS\\Spell_DeathKnight_ArmyOfTheDead',
+	},
+	[8] = { -- powerful spell
+		fdk, bdk, udk, mhunter, fmage, firemage, amage, mmonk, wmonk, rpala, hpala, ppala, arogue, srogue, crogue, eleshaman, rshaman, alock, demolock, dlock, awarri, fwarri, pwarri,
+		icon = 'Interface\\ICONS\\Spell_Shadow_ShadowBolt',
+	},
+	[9] = { -- deadly minions
+		rdruid, gdruid, bdruid, shunter, mhunter, bhunter, fmage, firemage, amage, bmonk, wmonk, rpala, hpala, ppala, dpriest, spriest, arogue, srogue, crogue, eleshaman, enhshaman, alock, dlock,
+		icon = 'Interface\\ICONS\\Achievement_Boss_TwinOrcBrutes',
+	},
+	[10]  = { -- timed battle, multiples: druid, mage, warlock
+		fdk, bdk, udk, rdruid, gdruid, bdruid, fdruid, shunter, mhunter, bhunter, fmage, firemage, amage, wmonk, mmonk, rpala, hpala, hpriest, dpriest, spriest, arogue, crogue, rshaman, eleshaman, enhshaman, alock, demolock, dlock, awarri, fwarri,
+		icon = 'Interface\\ICONS\\SPELL_HOLY_BORROWEDTIME',
+	},
+}
+
 local propertyOrder = {'GetFollowerItemLevelAverage', 'GetFollowerLevel', 'GetFollowerQuality', 'GetFollowerName'}
 local function SortFollowers(followerA, followerB)
 	for _, property in ipairs(propertyOrder) do
@@ -98,7 +140,7 @@ end
 
 local function ThreatOnEnter(self)
 	local followers = self.threatID and abilities[self.threatID]
-	if not followers then return end
+	if not followers or #followers < 1 then return end
 
 	if self.description then
 		GameTooltip:AddLine(self.description, 255, 255, 255, true)
@@ -141,8 +183,7 @@ local function ThreatOnClick(self, btn, up)
 	self:SetChecked(false)
 	local list = self:GetParent().FollowerList
 	if not list or not list:IsShown() or not list.SearchBox then return end
-	local mechanic = mechanics[self.threatID]
-	local text = btn == 'RightButton' and '' or mechanic.name
+	local text = btn == 'LeftButton' and (mechanics[self.threatID] and mechanics[self.threatID].name) or ''
 	list.SearchBox:SetText(text)
 	GarrisonFollowerList_UpdateFollowers(list)
 end
@@ -172,39 +213,50 @@ local function UpdateFollowerTabs(frame)
 			tab:Hide()
 		end
 	elseif not frame or not frame:IsShown() then
-		-- don't update for invisible frames
+		-- don't update for invisible frames (prevents flickering/reparenting)
 		return
 	end
-	-- print('UpdateFollowerTabs', frame.FollowerList.followers and #frame.FollowerList.followers)
 
 	local index = 1
-	for threatID, followers in pairs(abilities) do
-		local numAvailable, numFollowers = #followers, #followers
-		for _, followerID in pairs(followers) do
-			local status = C_Garrison.GetFollowerStatus(followerID)
-			if status and status ~= _G.GARRISON_FOLLOWER_IN_PARTY then
-				numAvailable = numAvailable - 1
-				if status == _G.GARRISON_FOLLOWER_INACTIVE then
-					-- don't count inactive followers in tab count
-					numFollowers = numFollowers - 1
+	-- for threatID, followers in pairs(abilities) do
+	for threatID, info in ipairs(abilityClasses) do
+		if info then
+			local followers = abilities[threatID] or emptyTable
+			local numAvailable, numFollowers = #followers, #followers
+			for _, followerID in pairs(followers) do
+				local status = C_Garrison.GetFollowerStatus(followerID)
+				if status and status ~= _G.GARRISON_FOLLOWER_IN_PARTY then
+					numAvailable = numAvailable - 1
+					if status == _G.GARRISON_FOLLOWER_INACTIVE then
+						-- don't count inactive followers in tab count
+						numFollowers = numFollowers - 1
+					end
 				end
 			end
-		end
 
-		local threatInfo = mechanics[threatID]
-		local tab = GetTab(index)
-		if tab:GetParent() ~= frame then
-			tab:SetParent(frame)
-			tab:ClearAllPoints()
-			tab:SetPoint('TOPLEFT', frame, 'TOPRIGHT', frame == GarrisonLandingPage and -10 or 0, 16 - 44*index)
+			local tab = GetTab(index)
+			if tab:GetParent() ~= frame then
+				tab:SetParent(frame)
+				tab:ClearAllPoints()
+				tab:SetPoint('TOPLEFT', frame, 'TOPRIGHT', frame == GarrisonLandingPage and -10 or 0, 16 - 44*index)
+			end
+			local threatInfo = mechanics[threatID]
+			if threatInfo then
+				tab.tooltip = ('|T%1$s:0|t %2$s'):format(threatInfo.icon, threatInfo.name)
+				tab.description = threatInfo.description
+				tab.count:SetText(numAvailable ~= numFollowers and ('%d/%d'):format(numAvailable, numFollowers) or numFollowers)
+				tab:SetNormalTexture(threatInfo.icon)
+				tab:GetNormalTexture():SetDesaturated(false)
+			else
+				tab.tooltip, tab.description = '', nil
+				tab.count:SetText()
+				tab:SetNormalTexture(info.icon)
+				tab:GetNormalTexture():SetDesaturated(true)
+			end
+			tab.threatID = threatID
+			tab:Show()
+			index = index + 1
 		end
-		tab:SetNormalTexture(threatInfo.icon)
-		tab:Show()
-		tab.count:SetText(numAvailable ~= numFollowers and ('%d/%d'):format(numAvailable, numFollowers) or numFollowers)
-		tab.tooltip = ('|T%1$s:0|t %2$s'):format(threatInfo.icon, threatInfo.name)
-		tab.description = threatInfo.description
-		tab.threatID = threatID
-		index = index + 1
 	end
 end
 
@@ -477,46 +529,6 @@ local function FollowerListReplaceAbilityWithThreat(self, index, ability)
 	end
 end
 
--- these numbers match the ingame .classSpec values
-local _, bdk, fdk, udk, bdruid, _, fdruid, gdruid, rdruid, bhunter, _, mhunter, shunter, amage, firemage, fmage, bmonk, mmonk, wmonk, hpala, ppala, rpala, dpriest, hpriest, spriest, arogue, crogue, srogue, eleshaman, enhshaman, rshaman, alock, demolock, dlock, awarri, _, fwarri, pwarri = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38
-local abilityClasses = {
-	[1] = { -- wild aggression
-		fdk, udk, bdk, gdruid, fdruid, bhunter, bmonk, wmonk, ppala, awarri, pwarri,
-		icon = 'Interface\\ICONS\\Spell_Nature_Reincarnation',
-	},
-	[2] = { -- massive strike
-		fdruid, gdruid, bdk, udk, shunter, rpala, ppala, fmage, bmonk, arogue, srogue, dlock, pwarri, fwarri,
-		icon = 'Interface\\ICONS\\Ability_Warrior_SavageBlow',
-	},
-	[3] = { -- group damage
-		rshaman, mmonk, dlock, hpala, hpriest, dpriest, rdruid,
-		icon = 'Interface\\ICONS\\Spell_Fire_SelfDestruct',
-	},
-	[4] = { -- magic debuff
-		fdk, rdruid, mmonk, hpala, ppala, hpriest, dpriest, spriest, rshaman, alock,
-		icon = 'Interface\\ICONS\\Spell_Shadow_ShadowWordPain',
-	},
-	[6] = { -- danger zones
-		fdruid, gdruid, bdruid, shunter, mhunter, bhunter, amage, firemage, wmonk, bmonk, mmonk, hpriest, dpriest, spriest, arogue, srogue, crogue, enhshaman, awarri, fwarri, pwarri,
-		icon = 'Interface\\ICONS\\spell_Shaman_Earthquake',
-	},
-	[7]  = { -- minion swarms
-		fdk, bdk, udk, bdruid, rdruid, shunter, mhunter, bhunter, fmage, firemage, rpala, hpriest, spriest, crogue, srogue, rshaman, eleshaman, enhshaman, alock, demolock, awarri, fwarri, pwarri,
-		icon = 'Interface\\ICONS\\Spell_DeathKnight_ArmyOfTheDead',
-	},
-	[8] = { -- powerful spell
-		fdk, bdk, udk, mhunter, fmage, firemage, amage, mmonk, wmonk, rpala, hpala, ppala, arogue, srogue, crogue, eleshaman, rshaman, alock, demolock, dlock, awarri, fwarri, pwarri,
-		icon = 'Interface\\ICONS\\Spell_Shadow_ShadowBolt',
-	},
-	[9] = { -- deadly minions
-		rdruid, gdruid, bdruid, shunter, mhunter, bhunter, fmage, firemage, amage, bmonk, wmonk, rpala, hpala, ppala, dpriest, spriest, arogue, srogue, crogue, eleshaman, enhshaman, alock, dlock,
-		icon = 'Interface\\ICONS\\Achievement_Boss_TwinOrcBrutes',
-	},
-	[10]  = { -- timed battle, multiples: druid, mage, warlock
-		fdk, bdk, udk, rdruid, gdruid, bdruid, fdruid, shunter, mhunter, bhunter, fmage, firemage, amage, wmonk, mmonk, rpala, hpala, hpriest, dpriest, spriest, arogue, crogue, rshaman, eleshaman, enhshaman, alock, demolock, dlock, awarri, fwarri,
-		icon = 'Interface\\ICONS\\SPELL_HOLY_BORROWEDTIME',
-	},
-}
 local function FollowerAbilityOptions(self, followerID)
 	local isRecruit = not self.AbilitiesFrame
 	local options = not isRecruit and _G[addonName..'FollowerAbilityOptions'] or self.abilityOptions
@@ -528,10 +540,10 @@ local function FollowerAbilityOptions(self, followerID)
 	-- unowned followers use generic *ByID(followerID) while owned use *(garrFollowerID)
 	local spec = C_Garrison.GetFollowerClassSpecByID(followerID) or C_Garrison.GetFollowerClassSpec(followerID)
 	local canLearn = ''
-	for threatID, counters in pairs(abilityClasses) do
-		if tContains(counters, spec) then
+	for threatID, specIDs in pairs(abilityClasses) do
+		if specIDs and tContains(specIDs, spec) then
 			canLearn = canLearn .. (canLearn ~= '' and ' ' or '')
-				.. '|T'..(mechanics[threatID] and mechanics[threatID].icon or counters.icon)
+				.. '|T'..(mechanics[threatID] and mechanics[threatID].icon or specIDs.icon)
 				.. (isRecruit and ':18:18:0:-2' or ':16:16:0:2') .. '|t'
 		end
 	end
@@ -601,6 +613,7 @@ end
 function addon:UNIT_SPELLCAST_SUCCEEDED(event, unit, _, _, _, spellID)
 	-- follower hearthstone pro/learn to dance/retraining
 	if unit == 'player' and (spellID == 174828 or spellID == 174829 or spellID == 174254) then
+		print('follower changing spell was cast:', event, unit, spellID)
 		ScanAllFollowerAbilities()
 	end
 end

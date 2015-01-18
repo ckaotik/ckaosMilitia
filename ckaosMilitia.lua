@@ -586,7 +586,12 @@ function addon:GARRISON_SHOW_LANDING_PAGE()
 	UpdateFollowerTabs(GarrisonLandingPage)
 end
 local frames = {GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}
+local fullUpdate = false
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
+	if fullUpdate then
+		ScanAllFollowerAbilities()
+		fullUpdate = false
+	end
 	-- TODO: we could probably pick more suitable events/hooks for these actions
 	-- this tracks: => work, => mission, => inactive, and probably more
 	for _, frame in pairs(frames) do
@@ -610,11 +615,14 @@ function addon:GARRISON_FOLLOWER_ADDED(event, followerID, name, displayID, level
 	ScanFollowerAbilities(followerID)
 end
 
+local followerSpells = {
+	174828, -- hearthstone pro
+	174829, -- learn to dance
+	174254, -- follower retraining
+}
 function addon:UNIT_SPELLCAST_SUCCEEDED(event, unit, _, _, _, spellID)
-	-- follower hearthstone pro/learn to dance/retraining
-	if unit == 'player' and (spellID == 174828 or spellID == 174829 or spellID == 174254) then
-		print('follower changing spell was cast:', event, unit, spellID)
-		ScanAllFollowerAbilities()
+	if unit == 'player' and tContains(followerSpells, spellID) then
+		fullUpdate = true
 	end
 end
 

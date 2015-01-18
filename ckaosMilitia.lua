@@ -434,7 +434,7 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 		elseif reward.quantity == 1 then
 			-- show item level
 			local _, link, quality, iLevel = GetItemInfo(reward.itemID)
-			if iLevel and iLevel > 1 then
+			if iLevel and iLevel > 1 and quality > LE_ITEM_QUALITY_COMMON then
 				quantity = ITEM_QUALITY_COLORS[quality or _G.LE_ITEM_QUALITY_COMMON].hex .. iLevel .. '|r'
 			end
 			button.link = link

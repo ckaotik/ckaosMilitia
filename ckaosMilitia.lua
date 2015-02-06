@@ -658,6 +658,13 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('UNIT_SPELLCAST_SUCCEEDED')
 
 	-- setup hooks
+	hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
+		if not missionList or #missionList == 0 or index == 0 or index > #missionList then return end
+		GarrisonMissionFrame.MissionComplete.ChanceFrame.FailureText:SetFormattedText('%s (%d%%)',
+			_G.GARRISON_MISSION_FAILED,
+			C_Garrison.GetRewardChance(missionList[index].missionID)
+		)
+	end)
 	hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)
 	hooksecurefunc('GarrisonMissionPage_ClearParty', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)

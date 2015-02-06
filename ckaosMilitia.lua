@@ -8,6 +8,7 @@ _G[addonName] = addon
 
 local tinsert, tsort = table.insert, table.sort
 local emptyTable = {}
+local needsUpdate = false
 
 addon.frame = CreateFrame('Frame')
 addon.frame:SetScript('OnEvent', function(self, event, ...)
@@ -567,7 +568,7 @@ local function FollowerAbilityOptions(self, followerID)
 	else
 		options:SetParent(self)
 		options:SetPoint('TOPLEFT', self.ClassSpec, 'TOPRIGHT', 0, 0)
-		options:SetText(' – learns ' .. canLearn)
+		options:SetText(' – ' .. canLearn)
 	end
 end
 
@@ -586,11 +587,10 @@ function addon:GARRISON_SHOW_LANDING_PAGE()
 	UpdateFollowerTabs(GarrisonLandingPage)
 end
 local frames = {GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}
-local fullUpdate = false
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
-	if fullUpdate then
+	if needsUpdate then
 		ScanAllFollowerAbilities()
-		fullUpdate = false
+		needsUpdate = false
 	end
 	-- TODO: we could probably pick more suitable events/hooks for these actions
 	-- this tracks: => work, => mission, => inactive, and probably more
@@ -622,7 +622,7 @@ local followerSpells = {
 }
 function addon:UNIT_SPELLCAST_SUCCEEDED(event, unit, _, _, _, spellID)
 	if unit == 'player' and tContains(followerSpells, spellID) then
-		fullUpdate = true
+		needsUpdate = true
 	end
 end
 

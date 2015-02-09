@@ -33,6 +33,7 @@ addon.defaults = {
 	replaceAbilityWithThreat = true,
 	missionCompleteFollowerTooltips = true,
 	showTabs = true,
+	excludeWorkingFromTotals = false,
 }
 
 -- map threat counters to follower specIDs (.classSpec values)
@@ -228,7 +229,7 @@ local function UpdateFollowerTabs(frame)
 				local status = C_Garrison.GetFollowerStatus(followerID)
 				if status and status ~= _G.GARRISON_FOLLOWER_IN_PARTY then
 					numAvailable = numAvailable - 1
-					if status == _G.GARRISON_FOLLOWER_INACTIVE then
+					if status == _G.GARRISON_FOLLOWER_INACTIVE or (addon.db.excludeWorkingFromTotals and status == _G.GARRISON_FOLLOWER_WORKING) then
 						-- don't count inactive followers in tab count
 						numFollowers = numFollowers - 1
 					end

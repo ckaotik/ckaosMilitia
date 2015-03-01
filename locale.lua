@@ -2,7 +2,9 @@ local addonName, addon, _ = ...
 
 addon.L = {
 	showTabs                     = 'Show threat tabs',
-	showTabsDesc                 = 'Display counterable threats as tabs that attach to several garrison frames.',
+	showTabsDesc                 = 'Display counterable threats as tabs that attach to several garrison frames.\nDoes not display on mission frame when also using threat buttons on mission page.',
+	showMissionPageThreats       = 'Show threat buttons on mission page',
+	showMissionPageThreatsDesc   = 'Display default Blizzard threat counter buttons on mission page.',
 	excludeWorkingFromTotals     = 'Exclude working from tab count',
 	excludeWorkingFromTotalsDesc = 'Check to not include working followers in tab total counts.',
 	showMinimapBuildings         = 'Show buildings in minimap tooltip',
@@ -27,14 +29,12 @@ addon.L = {
 	showExtraMissionInfoDesc     = 'Make adjustments to the mission list, including number of followers, threat icons and reward texts.|n' .. _G.RED_FONT_COLOR_CODE..'Unchecking this disables all mission list features.',
 	showRewardCounts             = 'Show reward counts',
 	showRewardCountsDesc         = 'Display the item level or amount of gold/experience on mission reward buttons.',
-	showMissionThreats           = 'Show threat icons',
+	showMissionThreats           = 'Show mission threat icons',
 	showMissionThreatsDesc       = 'Display mission threats as icons below the mission title.',
 	desaturateUnavailable        = 'Fade uncountered threats',
 	desaturateUnavailableDesc    = 'Fade out threats that cannot be countered with your followers.',
 	showRequiredResources        = 'Show required resources',
 	showRequiredResourcesDesc    = 'Append the amount of required resources to mission duration texts.',
-	showOnMissionCounters        = 'Show counters when on mission',
-	showOnMissionCountersDesc    = 'Display counters for followers that are currently on a mission.',
 	showFollowerReturnTime       = 'Show return time',
 	showFollowerReturnTimeDesc   = 'Display follower return times in threat counter tab tooltips.',
 }

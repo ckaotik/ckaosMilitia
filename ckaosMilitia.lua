@@ -541,14 +541,21 @@ local function ShowMinimapBuildings(self, motion)
 	GameTooltip:Show()
 end
 
+local function MissionCompleteFollowerOnClick(self, btn, up)
+	local followerLink = C_Garrison.GetFollowerLink(self.followerID)
+	HandleModifiedItemClick(followerLink)
+end
+
 local function MissionCompleteFollowerOnEnter(self, ...)
 	if not addon.db.missionCompleteFollowerTooltips then return end
 	local mission    = GarrisonMissionFrame.MissionComplete.currentMission
 	local followerID = self.followerID
+	local garrFollowerID = C_Garrison.GetFollowerLink(followerID):match('garrfollower:(%d+)') * 1
+
 	GarrisonFollowerTooltip:ClearAllPoints()
 	GarrisonFollowerTooltip:SetPoint('TOPLEFT', self, 'BOTTOMRIGHT')
-	GarrisonFollowerTooltip_Show(C_Garrison.GetFollowerLink(followerID):match('garrfollower:(%d+)') * 1,
-		C_Garrison.IsFollowerCollected(followerID),
+	GarrisonFollowerTooltip_Show(garrFollowerID,
+		C_Garrison.IsFollowerCollected(garrFollowerID),
 		C_Garrison.GetFollowerQuality(followerID),
 		C_Garrison.GetFollowerLevel(followerID),
 		C_Garrison.GetFollowerXP(followerID),
@@ -735,6 +742,7 @@ function addon:ADDON_LOADED(event, arg1)
 	-- show follower tooltips in mission complete scene
 	for index, frame in pairs(GarrisonMissionFrame.MissionComplete.Stage.FollowersFrame.Followers) do
 		-- these frames do not properly set their OnEnter/OnLeave scripts
+		frame:HookScript('OnMouseDown', MissionCompleteFollowerOnClick)
 		frame:SetScript('OnEnter', MissionCompleteFollowerOnEnter)
 		frame:SetScript('OnLeave', GarrisonMissionPageFollowerFrame_OnLeave)
 	end

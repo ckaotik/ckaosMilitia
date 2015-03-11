@@ -229,6 +229,21 @@ local function GetNumFollowersForMechanic(threatID)
 	return numFollowers, numAvailable
 end
 
+local function MissionOnEnter(self, button)
+	if not self.info or self.info.isRare or self.info.inProgress then return end
+	local numLines = GameTooltip:NumLines()
+	if C_Garrison.IsOnGarrisonMap() then
+		GameTooltip:AddLine(_G.GARRISON_MISSION_AVAILABILITY)
+		GameTooltip:AddLine(self.info.offerTimeRemaining, 1, 1, 1)
+	else
+		_G['GameTooltipTextLeft'..numLines - 1]:SetText(_G.GARRISON_MISSION_AVAILABILITY)
+		_G['GameTooltipTextLeft'..numLines]:SetText(self.info.offerTimeRemaining, 1, 1, 1)
+		GameTooltip:AddLine(' ')
+		GameTooltip:AddLine(_G.GARRISON_MISSION_TOOLTIP_RETURN_TO_START, nil, nil, nil, 1)
+	end
+	GameTooltip:Show()
+end
+
 local function ThreatOnEnter(self)
 	local followers = self.id and abilities[self.id]
 	if not followers or #followers < 1 then return end
@@ -858,6 +873,10 @@ function addon:ADDON_LOADED(event, arg1)
 		end
 	end)
 
+	hooksecurefunc('GarrisonMissionButton_OnEnter', MissionOnEnter)
+	for _, button in pairs(GarrisonMissionFrame.MissionTab.MissionList.listScroll.buttons) do
+		button:HookScript('OnEnter', MissionOnEnter)
+	end
 
 	hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
 		-- called when opening mission complete again w/o animation

@@ -9,6 +9,10 @@ _G[addonName] = addon
 local tinsert, tsort = table.insert, table.sort
 local emptyTable = {}
 local threatList = C_Garrison.GetAllEncounterThreats()
+local THREATS = {}
+for _, threat in ipairs(threatList) do
+	THREATS[threat.id] = threat
+end
 
 addon.frame = CreateFrame('Frame')
 addon.frame:SetScript('OnEvent', function(self, event, ...)
@@ -35,6 +39,7 @@ addon.defaults = {
 	showMissionPageThreats = true,
 	excludeWorkingFromTotals = false,
 	showLowLevelCounters = false,
+	showListCounters = false,
 }
 
 -- map threat counters to follower specIDs (.classSpec values)
@@ -82,14 +87,8 @@ local function FollowerAbilityOptions(self, followerID)
 	local canLearn = ''
 	for threatID, specIDs in pairs(abilityClasses) do
 		if tContains(specIDs, spec) then
-			local icon
-			for index, info in ipairs(threatList) do
-				if info.id == threatID then
-					icon = info.icon
-					break
-				end
-			end
-			canLearn = canLearn .. (canLearn ~= '' and ' ' or '') .. '|T' .. icon .. (isRecruit and ':18:18:0:-2' or ':16:16:0:2') .. '|t'
+			canLearn = canLearn .. (canLearn ~= '' and ' ' or '')
+				.. '|T' .. THREATS[threatID].icon .. (isRecruit and ':18:18:0:-2' or ':16:16:0:2') .. '|t'
 		end
 	end
 	if canLearn == '' then
@@ -135,6 +134,51 @@ local function SortBuildingsBySize(a, b)
 	end
 end
 
+local counters = {}
+local maxNumAbilities, maxNumTraits = 2, 3
+local function GetFollowerCounters(followerID)
+	if not followerID then return false end
+	wipe(counters)
+	local hasCounters = false
+	for i = 1, maxNumAbilities + maxNumTraits do
+		local abilityID
+		-- handle both garrFollowerID (hex) and followerID (decimal)
+		if i <= maxNumAbilities then
+			abilityID = C_Garrison.GetFollowerAbilityAtIndexByID(followerID, i)
+				or C_Garrison.GetFollowerAbilityAtIndex(followerID, i)
+		else
+			abilityID = C_Garrison.GetFollowerTraitAtIndexByID(followerID, i - maxNumAbilities)
+				or C_Garrison.GetFollowerTraitAtIndex(followerID, i - maxNumAbilities)
+		end
+		local threatID = (abilityID and abilityID ~= 0) and C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityID) or nil
+		if threatID then
+			if THREATS[threatID] then
+				hasCounters = true
+				counters[threatID] = (counters[threatID] or 0) + 1
+			end
+		end
+	end
+	return hasCounters and counters or false
+end
+
+local threats, threatMissionID = {}, nil
+local function GetMissionThreats(missionID)
+	if not missionID then return false end
+	if missionID == threatMissionID then return threats end
+	wipe(threats)
+
+	local hasThreats = false
+	local enemies = select(8, C_Garrison.GetMissionInfo(missionID))
+	for i, enemy in ipairs(enemies) do
+		for threatID, info in pairs(enemy.mechanics) do
+			hasThreats = true
+			threats[threatID] = (threats[threatID] or 0) + 1
+		end
+	end
+	threatMissionID = missionID
+	return hasThreats and threats or false
+end
+
 local abilities = {}
 local function ScanFollowerAbilities(followerID)
 	for threatID, followers in pairs(abilities) do
@@ -145,32 +189,12 @@ local function ScanFollowerAbilities(followerID)
 			end
 		end
 	end
-	for abilityIndex = 1, 3 do
-		local abilityID = C_Garrison.GetFollowerAbilityAtIndex(followerID, abilityIndex)
-		if abilityID ~= 0 then
-			local threatID = C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityID)
-			if threatID then
-				if not abilities[threatID] then
-					abilities[threatID] = {}
-				end
-				if not tContains(abilities[threatID], followerID) then
-					tinsert(abilities[threatID], followerID)
-				end
-			end
+	for threatID in pairs(GetFollowerCounters(followerID) or emptyTable) do
+		if not abilities[threatID] then
+			abilities[threatID] = {}
 		end
-	end
-	for traitIndex = 1, 3 do
-		local traitID = C_Garrison.GetFollowerAbilityAtIndex(followerID, traitIndex)
-		if traitID ~= 0 then
-			local threatID = C_Garrison.GetFollowerAbilityCounterMechanicInfo(traitID)
-			if threatID then
-				if not abilities[threatID] then
-					abilities[threatID] = {}
-				end
-				if not tContains(abilities[threatID], followerID) then
-					tinsert(abilities[threatID], followerID)
-				end
-			end
+		if not tContains(abilities[threatID], followerID) then
+			tinsert(abilities[threatID], followerID)
 		end
 	end
 end
@@ -250,7 +274,7 @@ local function ThreatOnClick(self, btn, up)
 	self:SetChecked(false)
 	local list = self:GetParent().FollowerList
 	if not list or not list:IsShown() or not list.SearchBox then return end
-	local text = btn == 'LeftButton' and (threatList[self.id].name) or ''
+	local text = btn == 'LeftButton' and (THREATS[self.id].name) or ''
 	list.SearchBox:SetText(text)
 	GarrisonFollowerList_UpdateFollowers(list)
 end
@@ -301,7 +325,6 @@ local function UpdateThreatCounterTabs(parent)
 			tab.count:SetText()
 		end
 		tab:GetNormalTexture():SetDesaturated(numFollowers < 1 and addon.db.desaturateUnavailable)
-		tab.description = nil -- TODO
 		tab:Show()
 	end
 end
@@ -607,17 +630,72 @@ local function UpdateMissionCompleteText()
 end
 
 local MISSION_PAGE_FRAME = GarrisonMissionFrame.MissionTab.MissionPage
+local infoDummy = {
+	coounterName = _G.UNKNOWN,
+	counterIcon = 'Interface\\Icons\\Inv_misc_questionmark',
+	showCounters = false,
+	name = '',
+	icon = '',
+}
+local function UpdateFollowerCounters(button, follower, showCounters)
+	if (not showCounters and not addon.db.showListCounters)
+		or (showCounters and not addon.db.showLowLevelCounters) then
+		--	or not button.isCollected or follower.status == GARRISON_FOLLOWER_INACTIVE
+		-- only display on listings and/or low levels on mission grouping
+		return
+	end
+	-- GarrisonMissionFrame.FollowerList.listScroll.buttons[i]
+	local listFrame = button:GetParent():GetParent():GetParent()
+	if showCounters and GarrisonMissionFrame.followerCounters
+		and GarrisonMissionFrame.followerCounters[follower.followerID] then
+		-- already displaying counters for this follower
+		return
+	end
+
+	local missionID = MISSION_PAGE_FRAME.missionInfo and MISSION_PAGE_FRAME.missionInfo.missionID
+	local threats   = showCounters and GetMissionThreats(missionID)
+	local counters  = GetFollowerCounters(follower.followerID)
+	local numShown  = 0
+	for threatID in pairs(counters or emptyTable) do
+		if numShown >= 4 then break end
+		if not threats or threats[threatID] then
+			numShown = numShown + 1
+			local info = infoDummy
+			      info.name = THREATS[threatID].name
+			      info.icon = THREATS[threatID].icon
+			GarrisonFollowerButton_SetCounterButton(button, numShown, info)
+			button.Counters[numShown].info.showCounters = false
+		end
+	end
+
+	-- we might have added abilities, when there were only traits before
+	local traits = showCounters and GarrisonMissionFrame.followerTraits
+		and GarrisonMissionFrame.followerTraits[follower.followerID]
+	for i = 1, traits and #traits or 0 do
+		if numShown >= 4 then break end
+		numShown = numShown + 1
+		GarrisonFollowerButton_SetCounterButton(button, numShown, traits[i])
+	end
+	button.Counters[1]:SetPoint('TOPRIGHT', -8, numShown <= 2 and -16 or -4)
+end
+
 local function MissionEnemiesCheckPseudoCounter(counterID)
+	local isThreat = false
 	for i = 1, #MISSION_PAGE_FRAME.Enemies do
 		local enemyFrame = MISSION_PAGE_FRAME.Enemies[i]
 		for mechanicIndex = 1, #enemyFrame.Mechanics do
-			if counterID == enemyFrame.Mechanics[mechanicIndex].mechanicID and not enemyFrame.Mechanics[mechanicIndex].hasCounter then
-				enemyFrame.Mechanics[mechanicIndex].hasCounter = true
-				enemyFrame.Mechanics[mechanicIndex].isPseudoCounter = true
-				return
+			isThreat = isThreat or counterID == enemyFrame.Mechanics[mechanicIndex].mechanicID
+			if counterID == enemyFrame.Mechanics[mechanicIndex].mechanicID then
+				isThreat = true
+				if not enemyFrame.Mechanics[mechanicIndex].hasCounter then
+					enemyFrame.Mechanics[mechanicIndex].hasCounter = true
+					enemyFrame.Mechanics[mechanicIndex].isPseudoCounter = true
+					return isThreat
+				end
 			end
 		end
 	end
+	return isThreat
 end
 local function MissionUpdateParty()
 	if not addon.db.showLowLevelCounters then return end
@@ -631,19 +709,23 @@ local function MissionUpdateParty()
 				-- 232: dancer counters danger zones
 				if not ability.isTrait or ability.id == 232 then
 					local counterID, counterInfo = next(ability.counters)
-					i = i + 1
-
-					if not followerFrame.Counters[i] then
-						followerFrame.Counters[i] = CreateFrame('Frame', nil, followerFrame, 'GarrisonMissionAbilityLargeCounterTemplate')
-						followerFrame.Counters[i]:SetPoint('LEFT', followerFrame.Counters[i-1], 'RIGHT', 16, 0)
+					-- update enemies threats
+					local isThreat = MissionEnemiesCheckPseudoCounter(counterID)
+					if isThreat then
+						-- only show useful counters
+						i = i + 1
+						local button = followerFrame.Counters[i]
+						if not button then
+							followerFrame.Counters[i] = CreateFrame('Frame', nil, followerFrame,
+								'GarrisonMissionAbilityLargeCounterTemplate')
+							followerFrame.Counters[i]:SetPoint('LEFT', followerFrame.Counters[i-1], 'RIGHT', 16, 0)
+							button = followerFrame.Counters[i]
+						end
+						button.info = counterInfo
+						button.Icon:SetTexture(counterInfo.icon)
+						button.tooltip = counterInfo.name .. '*'
+						button:Show()
 					end
-					local Counter = followerFrame.Counters[i]
-					Counter.info = counterInfo
-					Counter.Icon:SetTexture(counterInfo.icon)
-					Counter.tooltip = counterInfo.name .. '*'
-					Counter:Show()
-					-- also allow for updating enemies checkboxes
-					MissionEnemiesCheckPseudoCounter(counterID)
 				end
 			end
 		end
@@ -790,6 +872,7 @@ function addon:ADDON_LOADED(event, arg1)
 			UpdateMissionCompleteText()
 		end
 	end)
+	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
 
 	-- show garrison buildings in minimap button tooltip
 	local minimapButton = GarrisonLandingPageMinimapButton

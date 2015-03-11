@@ -46,7 +46,7 @@ local function OpenConfiguration(self, args)
 				checkbox.setting = setting
 
 				if prevCheckbox then
-					checkbox:SetPoint('TOPLEFT', prevCheckbox, 'BOTTOMLEFT', 0, -4)
+					checkbox:SetPoint('TOPLEFT', prevCheckbox, 'BOTTOMLEFT', 0, -2)
 				else
 					checkbox:SetPoint('TOPLEFT', self, 'TOPLEFT', 10, -40)
 				end

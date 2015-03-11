@@ -230,14 +230,21 @@ local function GetNumFollowersForMechanic(threatID)
 end
 
 local function MissionOnEnter(self, button)
-	if not self.info or self.info.isRare or self.info.inProgress then return end
+	local info = self.info
+	if not self.info and GarrisonLandingPageReport:IsShown() and GarrisonLandingPageReport.selectedTab == GarrisonLandingPageReport.Available then
+		info = (GarrisonLandingPageReport.List.AvailableItems or emptyTable)[self.id]
+	end
+	if not info or info.isRare or info.inProgress then
+		return
+	end
+
 	local numLines = GameTooltip:NumLines()
 	if C_Garrison.IsOnGarrisonMap() then
 		GameTooltip:AddLine(_G.GARRISON_MISSION_AVAILABILITY)
-		GameTooltip:AddLine(self.info.offerTimeRemaining, 1, 1, 1)
+		GameTooltip:AddLine(info.offerTimeRemaining, 1, 1, 1)
 	else
 		_G['GameTooltipTextLeft'..numLines - 1]:SetText(_G.GARRISON_MISSION_AVAILABILITY)
-		_G['GameTooltipTextLeft'..numLines]:SetText(self.info.offerTimeRemaining, 1, 1, 1)
+		_G['GameTooltipTextLeft'..numLines]:SetText(info.offerTimeRemaining, 1, 1, 1)
 		GameTooltip:AddLine(' ')
 		GameTooltip:AddLine(_G.GARRISON_MISSION_TOOLTIP_RETURN_TO_START, nil, nil, nil, 1)
 	end
@@ -873,8 +880,13 @@ function addon:ADDON_LOADED(event, arg1)
 		end
 	end)
 
+	-- mission tooltips
 	hooksecurefunc('GarrisonMissionButton_OnEnter', MissionOnEnter)
 	for _, button in pairs(GarrisonMissionFrame.MissionTab.MissionList.listScroll.buttons) do
+		button:HookScript('OnEnter', MissionOnEnter)
+	end
+	hooksecurefunc('GarrisonLandingPageReportMission_OnEnter', MissionOnEnter)
+	for _, button in pairs(GarrisonLandingPageReport.List.listScroll.buttons) do
 		button:HookScript('OnEnter', MissionOnEnter)
 	end
 

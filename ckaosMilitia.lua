@@ -683,13 +683,14 @@ local function UpdateFollowerCounters(button, follower, showCounters)
 		-- only display on listings and/or low levels on mission grouping
 		return
 	end
-	-- GarrisonMissionFrame.FollowerList.listScroll.buttons[i]
-	local listFrame = button:GetParent():GetParent():GetParent()
 	if showCounters and GarrisonMissionFrame.followerCounters
 		and GarrisonMissionFrame.followerCounters[follower.followerID] then
 		-- already displaying counters for this follower
 		return
 	end
+	-- GarrisonMissionFrame.FollowerList.listScroll.buttons[i]
+	local listFrame = button:GetParent():GetParent():GetParent()
+	if listFrame == GarrisonBuildingFrame.FollowerList then return end
 
 	local missionID = MISSION_PAGE_FRAME.missionInfo and MISSION_PAGE_FRAME.missionInfo.missionID
 	local threats   = showCounters and GetMissionThreats(missionID)

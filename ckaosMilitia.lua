@@ -839,6 +839,18 @@ function addon:GARRISON_FOLLOWER_ADDED(event, followerID, name, displayID, level
 	ScanFollowerAbilities(followerID)
 end
 
+function addon:GARRISON_UPGRADEABLE_RESULT(event)
+	-- this is the actual initialization
+	for index, info in pairs(C_Garrison.GetFollowers()) do
+		if info.isCollected then
+			ScanFollowerAbilities(info.followerID)
+		end
+	end
+	addon.GARRISON_FOLLOWER_LIST_UPDATE()
+
+	self.frame:UnregisterEvent(event)
+end
+
 -- --------------------------------------------------------
 --  Setup
 -- --------------------------------------------------------
@@ -977,14 +989,9 @@ function addon:ADDON_LOADED(event, arg1)
 	end
 	GarrisonThreatCountersFrame:HookScript('OnShow', UpdateThreatCounterButtons)
 
-	-- initialize on the currently shown frame
-	for index, info in pairs(C_Garrison.GetFollowers()) do
-		if info.isCollected then
-			ScanFollowerAbilities(info.followerID)
-		end
-	end
-	addon.GARRISON_FOLLOWER_LIST_UPDATE()
-	-- C_Timer.After(0.05, addon.GARRISON_FOLLOWER_LIST_UPDATE) -- slight delay because ... reasons
+	-- Blizzard_GarrisonUI might have been forcably loaded
+	-- try again when more info is available
+	addon.frame:RegisterEvent('GARRISON_UPGRADEABLE_RESULT')
 
 	addon.frame:UnregisterEvent(event)
 end

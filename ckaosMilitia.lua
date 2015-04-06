@@ -43,34 +43,51 @@ addon.defaults = {
 }
 
 -- map threat counters to follower specIDs (.classSpec values)
-local _, bdk, fdk, udk, bdruid, _, fdruid, gdruid, rdruid, bhunter, _, mhunter, shunter, amage, firemage, fmage, bmonk, mmonk, wmonk, hpala, ppala, rpala, dpriest, hpriest, spriest, arogue, crogue, srogue, eleshaman, enhshaman, rshaman, alock, demolock, dlock, awarri, _, fwarri, pwarri = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38
-local abilityClasses = {
+local specs = {}
+for index = 1, GetNumClasses() do
+	local _, class, classID = GetClassInfo(index)
+	specs[classID] = {}
+	specs[class]   = specs[classID]
+end
+specs.DEATHKNIGHT.blood, specs.DEATHKNIGHT.frost, specs.DEATHKNIGHT.unholy = 2, 3, 4
+specs.DRUID.balance, specs.DRUID.feral, specs.DRUID.guardian, specs.DRUID.restoration = 5, 7, 8, 9
+specs.HUNTER.beastmaster, specs.HUNTER.marksman, specs.HUNTER.survival = 10, 12, 13
+specs.MAGE.arcane, specs.MAGE.fire, specs.MAGE.frost = 14, 15, 16
+specs.MONK.brewmaster, specs.MONK.mistweaver, specs.MONK.windwalker = 17, 18, 19
+specs.PALADIN.holy, specs.PALADIN.protection, specs.PALADIN.retribution = 20, 21, 22
+specs.PRIEST.discipline, specs.PRIEST.holy, specs.PRIEST.shadow = 23, 24, 25
+specs.ROGUE.assassination, specs.ROGUE.combat, specs.ROGUE.subtelty = 26, 27, 28
+specs.SHAMAN.elemental, specs.SHAMAN.enhancement, specs.SHAMAN.restoration = 29, 30, 31
+specs.WARLOCK.affliction, specs.WARLOCK.demonology, specs.WARLOCK.destruction = 32, 33, 34
+specs.WARRIOR.arms, specs.WARRIOR.fury, specs.WARRIOR.protection = 35, 37, 38
+
+local abilitySpecs = {
 	[1] = { -- wild aggression
-		fdk, udk, bdk, gdruid, fdruid, bhunter, bmonk, wmonk, ppala, awarri, pwarri
+		specs.DEATHKNIGHT.frost, specs.DEATHKNIGHT.unholy, specs.DEATHKNIGHT.blood, specs.DRUID.guardian, specs.DRUID.feral, specs.HUNTER.beastmaster, specs.MONK.brewmaster, specs.MONK.windwalker, specs.PALADIN.protection, specs.WARRIOR.arms, specs.WARRIOR.protection
 	},
 	[2] = { -- massive strike
-		fdruid, gdruid, bdk, udk, shunter, rpala, ppala, fmage, bmonk, arogue, srogue, dlock, pwarri, fwarri
+		specs.DRUID.feral, specs.DRUID.guardian, specs.DEATHKNIGHT.blood, specs.DEATHKNIGHT.unholy, specs.HUNTER.survival, specs.PALADIN.retribution, specs.PALADIN.protection, specs.MAGE.frost, specs.MONK.brewmaster, specs.ROGUE.assassination, specs.ROGUE.subtelty, specs.WARLOCK.destruction, specs.WARRIOR.protection, specs.WARRIOR.fury
 	},
 	[3] = { -- group damage
-		rshaman, mmonk, dlock, hpala, hpriest, dpriest, rdruid
+		specs.SHAMAN.restoration, specs.MONK.mistweaver, specs.WARLOCK.destruction, specs.PALADIN.holy, specs.PRIEST.holy, specs.PRIEST.discipline, specs.DRUID.restoration
 	},
 	[4] = { -- magic debuff
-		fdk, rdruid, mmonk, hpala, ppala, hpriest, dpriest, spriest, rshaman, alock
+		specs.DEATHKNIGHT.frost, specs.DRUID.restoration, specs.MONK.mistweaver, specs.PALADIN.holy, specs.PALADIN.protection, specs.PRIEST.holy, specs.PRIEST.discipline, specs.PRIEST.shadow, specs.SHAMAN.restoration, specs.WARLOCK.affliction
 	},
 	[6] = { -- danger zones
-		fdruid, gdruid, bdruid, shunter, mhunter, bhunter, amage, firemage, wmonk, bmonk, mmonk, hpriest, dpriest, spriest, arogue, srogue, crogue, enhshaman, awarri, fwarri, pwarri
+		specs.DRUID.feral, specs.DRUID.guardian, specs.DRUID.balance, specs.HUNTER.survival, specs.HUNTER.marksman, specs.HUNTER.beastmaster, specs.MAGE.arcane, specs.MAGE.fire, specs.MONK.windwalker, specs.MONK.brewmaster, specs.MONK.mistweaver, specs.PRIEST.holy, specs.PRIEST.discipline, specs.PRIEST.shadow, specs.ROGUE.assassination, specs.ROGUE.subtelty, specs.ROGUE.combat, specs.SHAMAN.enhancement, specs.WARRIOR.arms, specs.WARRIOR.fury, specs.WARRIOR.protection
 	},
 	[7]  = { -- minion swarms
-		fdk, bdk, udk, bdruid, rdruid, shunter, mhunter, bhunter, fmage, firemage, rpala, hpriest, spriest, crogue, srogue, rshaman, eleshaman, enhshaman, alock, demolock, awarri, fwarri, pwarri
+		specs.DEATHKNIGHT.frost, specs.DEATHKNIGHT.blood, specs.DEATHKNIGHT.unholy, specs.DRUID.balance, specs.DRUID.restoration, specs.HUNTER.survival, specs.HUNTER.marksman, specs.HUNTER.beastmaster, specs.MAGE.frost, specs.MAGE.fire, specs.PALADIN.retribution, specs.PRIEST.holy, specs.PRIEST.shadow, specs.ROGUE.combat, specs.ROGUE.subtelty, specs.SHAMAN.restoration, specs.SHAMAN.elemental, specs.SHAMAN.enhancement, specs.WARLOCK.affliction, specs.WARLOCK.demonology, specs.WARRIOR.arms, specs.WARRIOR.fury, specs.WARRIOR.protection
 	},
 	[8] = { -- powerful spell
-		fdk, bdk, udk, mhunter, fmage, firemage, amage, mmonk, wmonk, rpala, hpala, ppala, arogue, srogue, crogue, eleshaman, rshaman, alock, demolock, dlock, awarri, fwarri, pwarri
+		specs.DEATHKNIGHT.frost, specs.DEATHKNIGHT.blood, specs.DEATHKNIGHT.unholy, specs.HUNTER.marksman, specs.MAGE.frost, specs.MAGE.fire, specs.MAGE.arcane, specs.MONK.mistweaver, specs.MONK.windwalker, specs.PALADIN.retribution, specs.PALADIN.holy, specs.PALADIN.protection, specs.ROGUE.assassination, specs.ROGUE.subtelty, specs.ROGUE.combat, specs.SHAMAN.elemental, specs.SHAMAN.restoration, specs.WARLOCK.affliction, specs.WARLOCK.demonology, specs.WARLOCK.destruction, specs.WARRIOR.arms, specs.WARRIOR.fury, specs.WARRIOR.protection
 	},
 	[9] = { -- deadly minions
-		rdruid, gdruid, bdruid, shunter, mhunter, bhunter, fmage, firemage, amage, bmonk, wmonk, rpala, hpala, ppala, dpriest, spriest, arogue, srogue, crogue, eleshaman, enhshaman, alock, dlock
+		specs.DRUID.restoration, specs.DRUID.guardian, specs.DRUID.balance, specs.HUNTER.survival, specs.HUNTER.marksman, specs.HUNTER.beastmaster, specs.MAGE.frost, specs.MAGE.fire, specs.MAGE.arcane, specs.MONK.brewmaster, specs.MONK.windwalker, specs.PALADIN.retribution, specs.PALADIN.holy, specs.PALADIN.protection, specs.PRIEST.discipline, specs.PRIEST.shadow, specs.ROGUE.assassination, specs.ROGUE.subtelty, specs.ROGUE.combat, specs.SHAMAN.elemental, specs.SHAMAN.enhancement, specs.WARLOCK.affliction, specs.WARLOCK.destruction
 	},
 	[10]  = { -- timed battle, multiples: druid, mage, warlock
-		fdk, bdk, udk, rdruid, gdruid, bdruid, fdruid, shunter, mhunter, bhunter, fmage, firemage, amage, wmonk, mmonk, rpala, hpala, hpriest, dpriest, spriest, arogue, crogue, rshaman, eleshaman, enhshaman, alock, demolock, dlock, awarri, fwarri
+		specs.DEATHKNIGHT.frost, specs.DEATHKNIGHT.blood, specs.DEATHKNIGHT.unholy, specs.DRUID.restoration, specs.DRUID.guardian, specs.DRUID.balance, specs.DRUID.feral, specs.HUNTER.survival, specs.HUNTER.marksman, specs.HUNTER.beastmaster, specs.MAGE.frost, specs.MAGE.fire, specs.MAGE.arcane, specs.MONK.windwalker, specs.MONK.mistweaver, specs.PALADIN.retribution, specs.PALADIN.holy, specs.PRIEST.holy, specs.PRIEST.discipline, specs.PRIEST.shadow, specs.ROGUE.assassination, specs.ROGUE.combat, specs.SHAMAN.restoration, specs.SHAMAN.elemental, specs.SHAMAN.enhancement, specs.WARLOCK.affliction, specs.WARLOCK.demonology, specs.WARLOCK.destruction, specs.WARRIOR.arms, specs.WARRIOR.fury
 	},
 }
 
@@ -85,7 +102,7 @@ local function FollowerAbilityOptions(self, followerID)
 	-- unowned followers use generic *ByID(followerID) while owned use *(garrFollowerID)
 	local spec = C_Garrison.GetFollowerClassSpecByID(followerID) or C_Garrison.GetFollowerClassSpec(followerID)
 	local canLearn = ''
-	for threatID, specIDs in pairs(abilityClasses) do
+	for threatID, specIDs in pairs(abilitySpecs) do
 		if tContains(specIDs, spec) then
 			canLearn = canLearn .. (canLearn ~= '' and ' ' or '')
 				.. '|T' .. THREATS[threatID].icon .. (isRecruit and ':18:18:0:-2' or ':16:16:0:2') .. '|t'

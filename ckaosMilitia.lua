@@ -868,8 +868,6 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_ADDED')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_UPGRADED')
-	addon.frame:RegisterEvent('CURRENT_SPELL_CAST_CHANGED')
-	addon.frame:RegisterEvent('UNIT_SPELLCAST_SUCCEEDED')
 
 	-- setup hooks
 	hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)

@@ -420,7 +420,7 @@ local function UpdateMissionList()
 	for i = 1, #buttons do
 		local button = buttons[i]
 		local mission = missions[i + offset]
-		if not button:IsShown() then break end
+		if not mission or not button:IsShown() then break end
 
 		if not button.threats then button.threats = {} end
 		if active then
@@ -444,17 +444,14 @@ local function UpdateMissionList()
 		button.followers:SetText(strrep(followerSlotIcon, mission.numFollowers))
 
 		-- show item level instead of max level
-		--[[ local quality = mission.iLevel >= 645 and _G.LE_ITEM_QUALITY_EPIC
-				or mission.iLevel >= 630 and _G.LE_ITEM_QUALITY_RARE
-				or mission.iLevel >= 615 and _G.LE_ITEM_QUALITY_UNCOMMON
-				or _G.LE_ITEM_QUALITY_COMMON
-		local color = _G.ITEM_QUALITY_COLORS[quality] --]]
 		if mission.level == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel > 0 then
 			button.Level:SetText(mission.iLevel)
-			-- button.Level:SetTextColor(color.r/2, color.g/2, color.b/2, 1)
 			button.Level:SetPoint('CENTER', button, 'TOPLEFT', 40, -36)
 			button.ItemLevel:Hide()
 		end
+
+		local  levelReq = mission.level - 2
+		local iLevelReq = (levelReq == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel or 0) - 14
 
 		-- show required abilities
 		local _, _, env, envDesc, envIcon, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
@@ -482,8 +479,8 @@ local function UpdateMissionList()
 				if not active and addon.db.desaturateUnavailable then
 					local numCounters = 0
 					for _, followerID in ipairs(abilities[threatID] or emptyTable) do
-						if C_Garrison.GetFollowerLevel(followerID) + 2 >= mission.level
-							and C_Garrison.GetFollowerItemLevelAverage(followerID) + 14 >= mission.iLevel
+						if C_Garrison.GetFollowerLevel(followerID) >= levelReq
+							and C_Garrison.GetFollowerItemLevelAverage(followerID) >= iLevelReq
 							and not C_Garrison.GetFollowerStatus(followerID) then
 							-- must have high level, high gear and be available
 							numCounters = numCounters + 1

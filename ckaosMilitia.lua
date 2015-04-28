@@ -1,12 +1,14 @@
 local addonName, addon, _ = ...
 _G[addonName] = addon
 
--- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonRecruitSelectFrame, GarrisonLandingPage, ITEM_QUALITY_COLORS
+-- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonRecruitSelectFrame, GarrisonLandingPage, GarrisonLandingPageReport, ITEM_QUALITY_COLORS, LE_ITEM_QUALITY_COMMON
+-- GLOBALS: GarrisonFollowerList_UpdateFollowers, GarrisonThreatCountersFrame, GarrisonFollowerTooltip, GarrisonFollowerTooltip_Show, GarrisonBuildingFrame, FloatingGarrisonMissionTooltip
 -- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick, GetCurrencyInfo
--- GLOBALS: GarrisonMissionComplete_FindAnimIndexFor, GarrisonMissionComplete_AnimRewards, GarrisonLandingPageMinimapButton, GarrisonMissionPageFollowerFrame_OnEnter, GarrisonMissionPageFollowerFrame_OnLeave, GarrisonFollowerButton_SetCounterButton, GarrisonMissionPage_AddFollower, GarrisonMissionPage_UpdateParty
--- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc
+-- GLOBALS: GarrisonMissionComplete_FindAnimIndexFor, GarrisonMissionComplete_AnimRewards, GarrisonLandingPageMinimapButton, GarrisonMissionPageFollowerFrame_OnEnter, GarrisonMissionPageFollowerFrame_OnLeave, GarrisonFollowerButton_SetCounterButton, GarrisonMissionPage_AddFollower, GarrisonMissionPage_UpdateParty, GarrisonLandingPageReportList_FormatXPNumbers
+-- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc, tContains, select, rawget, setmetatable
 
-local tinsert, tsort = table.insert, table.sort
+local tinsert, tremove, tsort = table.insert, table.remove, table.sort
+local floor = math.floor
 local emptyTable = {}
 local threatList = C_Garrison.GetAllEncounterThreats()
 local THREATS = {}
@@ -40,6 +42,7 @@ addon.defaults = {
 	excludeWorkingFromTotals = false,
 	showLowLevelCounters = false,
 	showListCounters = false,
+	showTTRewardInfo = true,
 }
 
 -- map threat counters to follower specIDs (.classSpec values)
@@ -268,6 +271,22 @@ local function MissionOnEnter(self, button)
 	GameTooltip:Show()
 end
 
+local function GetFollowerLevelText(followerID)
+	local level   = C_Garrison.GetFollowerLevel(followerID)
+	local iLevel  = C_Garrison.GetFollowerItemLevelAverage(followerID)
+	local quality = C_Garrison.GetFollowerQuality(followerID)
+
+	local qualityColor = RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[quality])
+	local displayLevel
+	if level < 100 then
+		-- display invisible zero to keep padding intact
+		displayLevel = '|c000000000|r'..qualityColor..level..'|r '
+	else
+		displayLevel = qualityColor .. iLevel .. '|r '
+	end
+	return displayLevel
+end
+
 local function ThreatOnEnter(self)
 	local followers = self.id and abilities[self.id]
 	if not followers or #followers < 1 then return end
@@ -279,20 +298,10 @@ local function ThreatOnEnter(self)
 
 	tsort(followers, SortFollowers)
 	for _, followerID in pairs(followers) do
-		local level   = C_Garrison.GetFollowerLevel(followerID)
-		local iLevel  = C_Garrison.GetFollowerItemLevelAverage(followerID)
-		local quality = C_Garrison.GetFollowerQuality(followerID)
 		local status  = C_Garrison.GetFollowerStatus(followerID) or ''
 		local name    = C_Garrison.GetFollowerName(followerID)
+		local displayLevel = GetFollowerLevelText(followerID)
 
-		local qualityColor = RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[quality])
-		local displayLevel
-		if level < 100 then
-			-- display invisible zero to keep padding intact
-			displayLevel = '|c000000000|r'..qualityColor..level..'|r '
-		else
-			displayLevel = qualityColor .. iLevel .. '|r '
-		end
 		local color = _G.YELLOW_FONT_COLOR
 		if status == _G.GARRISON_FOLLOWER_INACTIVE then
 			color = _G.GRAY_FONT_COLOR
@@ -655,6 +664,73 @@ local function FollowerListReplaceAbilityWithThreat(self, index, ability)
 	end
 end
 
+local function GetRewardText(reward)
+	local rewardTitle, count, icon = reward.title, reward.quantity, reward.icon
+	local quality = reward.quality and reward.quality + 1 or nil
+
+	if reward.itemID then
+		rewardTitle, _, quality, _, _, _, _, _, _, icon = GetItemInfo(reward.itemID)
+	elseif reward.currencyID == 0 then
+		count = BreakUpLargeNumbers(floor(reward.quantity / _G.COPPER_PER_GOLD))
+	elseif reward.followerXP then
+		count = GarrisonLandingPageReportList_FormatXPNumbers(reward.followerXP)
+	else
+		count = BreakUpLargeNumbers(reward.quantity)
+	end
+
+	if quality then
+		rewardTitle = _G.ITEM_QUALITY_COLORS[quality].hex .. rewardTitle .. _G.FONT_COLOR_CODE_CLOSE
+	end
+	if count and count ~= 1 then
+		return ('|T%1$s:0|t %2$s (%3$s)'):format(icon, rewardTitle, count)
+	else
+		return ('|T%1$s:0|t %2$s'):format(icon, rewardTitle)
+	end
+end
+local function UpdateMissionTooltip(missionID)
+	if not addon.db.showTTRewardInfo then return end
+	local missionRewards
+	for id, reward in pairs(C_Garrison.GetMissionRewardInfo(missionID)) do
+		missionRewards = (missionRewards and missionRewards..'\n' or '') .. GetRewardText(reward)
+	end
+	FloatingGarrisonMissionTooltip.Rewards:SetText(missionRewards, 1, 1, 1)
+	FloatingGarrisonMissionTooltip:SetHeight(70 + FloatingGarrisonMissionTooltip.Rewards:GetHeight())
+end
+
+local function UpdateInProgressMissionTooltip(missionInfo, showRewards)
+	if not showRewards or not addon.db.showTTRewardInfo then return end
+	local lineNum
+	for i = 1, GameTooltip:NumLines() do
+		if _G['GameTooltipTextLeft'..i]:GetText() == _G.REWARDS then
+			-- found rewards header
+			lineNum = i; break
+		end
+	end
+	for id, reward in pairs(missionInfo.rewards) do
+		lineNum = lineNum + 1
+		_G['GameTooltipTextLeft'..lineNum]:SetText(GetRewardText(reward))
+	end
+
+	for i = lineNum, GameTooltip:NumLines() do
+		if _G['GameTooltipTextLeft'..i]:GetText() == _G.GARRISON_FOLLOWERS then
+			-- found followers header
+			lineNum = i; break
+		end
+	end
+	-- color follower by quality
+	for _, followerID in ipairs(missionInfo.followers or emptyTable) do
+		lineNum = lineNum + 1
+		-- local color = _G.ITEM_QUALITY_COLORS[C_Garrison.GetFollowerQuality(followerID)]
+		-- _G['GameTooltipTextLeft'..lineNum]:SetTextColor(color.r, color.g, color.b)
+		local displayLevel = GetFollowerLevelText(followerID)
+		local name = C_Garrison.GetFollowerName(followerID)
+		_G['GameTooltipTextLeft'..lineNum]:SetText(displayLevel .. name)
+	end
+
+	-- update tooltip dimensions
+	GameTooltip:Show()
+end
+
 -- append success chance to mission complete screen
 local function UpdateMissionCompleteText()
 	local frame = GarrisonMissionFrame.MissionComplete
@@ -914,6 +990,9 @@ function addon:ADDON_LOADED(event, arg1)
 	for _, button in pairs(GarrisonLandingPageReport.List.listScroll.buttons) do
 		button:HookScript('OnEnter', MissionOnEnter)
 	end
+	-- show reward info
+	hooksecurefunc('FloatingGarrisonMission_Show', UpdateMissionTooltip)
+	hooksecurefunc('GarrisonMissionButton_SetInProgressTooltip', UpdateInProgressMissionTooltip)
 
 	hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
 		-- called when opening mission complete again w/o animation

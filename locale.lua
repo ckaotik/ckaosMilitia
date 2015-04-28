@@ -27,6 +27,8 @@ addon.L = {
 	showFollowerAbilityOptionsDesc = 'Adds icons for threat counters that can be learned by a follower\'s class.',
 	missionCompleteFollowerTooltips = 'Mission complete tooltips',
 	missionCompleteFollowerTooltipsDesc = 'Enable follower tooltips in mission complete scene.',
+	showTTRewardInfo             = 'Show tooltip reward info',
+	showTTRewardInfoDesc         = 'Display reward icons and amount texts in mission tooltip reward section.',
 
 	-- mission list
 	showExtraMissionInfo         = 'Show extra mission information',

@@ -595,17 +595,18 @@ local function ShowMinimapBuildings(self, motion)
 
 	for i, building in ipairs(buildings) do
 		if i == 1 then GameTooltip:AddLine(' ') end
-		local _, name, _, icon, description, rank, _, _, _, _, _, _, _, upgrades, canUpgrade, isMaxLevel, _, _, _, _, isBeingBuilt, _, _, _, canCompleteBuild = C_Garrison.GetOwnedBuildingInfo(building.plotID)
-		local bonusText, resources, gold, _, buildTime, needsPlan = C_Garrison.GetBuildingTooltip(upgrades and upgrades[rank+1] or 0)
+		local _, name, _, icon, _, rank, _, resources, gold, buildTime, needsPlan, _, _, upgrades, canUpgrade, isMaxLevel, _, _, _, _, isBeingBuilt, _, _, _, canCompleteBuild = C_Garrison.GetOwnedBuildingInfo(building.plotID)
+		-- currencyID, currencyQty, and goldQty from above are the cost of the building's current level, which we do not display. What we do display is the cost of the next level.
+		-- _, _, _, _, _, currencyID, currencyQty, goldQty = C_Garrison.GetBuildingUpgradeInfo(id)
 
 		local infoText = _G.GARRISON_BUILDING_LEVEL_TOOLTIP_TEXT:format(rank)
 		if canCompleteBuild then
 			infoText = _G.GREEN_FONT_COLOR_CODE .. infoText .. '|r'
 		elseif isBeingBuilt then
 			infoText = '|TInterface\\FriendsFrame\\StatusIcon-Away:0|t' .. infoText
-		elseif rank == _G.GARRISON_MAX_BUILDING_LEVEL then
+		elseif isMaxLevel or rank == _G.GARRISON_MAX_BUILDING_LEVEL then
 			infoText = _G.GRAY_FONT_COLOR_CODE .. infoText .. '|r'
-		elseif not needsPlan then
+		elseif canUpgrade and not needsPlan then
 			infoText = '|TInterface\\petbattles\\battlebar-abilitybadge-strong-small:0|t' .. infoText
 		end
 

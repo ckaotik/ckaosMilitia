@@ -685,7 +685,7 @@ local function GetRewardText(reward)
 	if count and count ~= 1 then
 		return ('|T%1$s:0|t %2$s (%3$s)'):format(icon, rewardTitle, count)
 	else
-		return ('|T%1$s:0|t %2$s'):format(icon, rewardTitle)
+		return ('|T%1$s:0|t %2$s'):format(icon or '', rewardTitle or '')
 	end
 end
 local function UpdateMissionTooltip(missionID)

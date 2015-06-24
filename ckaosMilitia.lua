@@ -10,7 +10,7 @@ _G[addonName] = addon
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
 local floor = math.floor
 local emptyTable = {}
-local threatList = C_Garrison.GetAllEncounterThreats()
+local threatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_GARRISON_6_0) -- LE_FOLLOWER_TYPE_SHIPYARD_6_2
 local THREATS = {}
 for _, threat in ipairs(threatList) do
 	THREATS[threat.id] = threat
@@ -763,8 +763,8 @@ local function UpdateFollowerCounters(button, follower, showCounters)
 		return
 	end
 	-- GarrisonMissionFrame.FollowerList.listScroll.buttons[i]
-	local listFrame = button:GetParent():GetParent():GetParent()
-	if listFrame == GarrisonBuildingFrame.FollowerList then return end
+	-- local listFrame = button:GetParent():GetParent():GetParent()
+	-- if listFrame == GarrisonBuildingFrame.FollowerList then return end
 
 	local missionID = MISSION_PAGE_FRAME.missionInfo and MISSION_PAGE_FRAME.missionInfo.missionID
 	local threats   = showCounters and GetMissionThreats(missionID)
@@ -790,7 +790,10 @@ local function UpdateFollowerCounters(button, follower, showCounters)
 		numShown = numShown + 1
 		GarrisonFollowerButton_SetCounterButton(button, numShown, traits[i])
 	end
-	button.Counters[1]:SetPoint('TOPRIGHT', -8, numShown <= 2 and -16 or -4)
+	if button.Counters then
+		-- TODO: error on landing page
+		button.Counters[1]:SetPoint('TOPRIGHT', -8, numShown <= 2 and -16 or -4)
+	end
 end
 
 local function MissionEnemiesCheckPseudoCounter(counterID)
@@ -948,6 +951,7 @@ function addon:ADDON_LOADED(event, arg1)
 	})
 
 	-- register events
+	-- GARRISON_SHIPYARD_NPC_OPENED and GARRISON_SHIPYARD_NPC_CLOSED
 	addon.frame:RegisterEvent('GARRISON_MISSION_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_SHOW_LANDING_PAGE')
@@ -957,16 +961,16 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_UPGRADED')
 
 	-- setup hooks
-	hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)
-	hooksecurefunc('GarrisonMissionPage_ClearParty', UpdateMissionList)
-	hooksecurefunc('GarrisonMissionPage_UpdateParty', MissionUpdateParty)
+	-- hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)
+	-- hooksecurefunc('GarrisonMissionPage_ClearParty', UpdateMissionList)
+	-- hooksecurefunc('GarrisonMissionPage_UpdateParty', MissionUpdateParty)
 	hooksecurefunc('GarrisonMissionPage_SetCounters', MissionUpdateCounters)
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonFollowerButton_AddAbility', FollowerListReplaceAbilityWithThreat)
-	hooksecurefunc('GarrisonFollowerPage_ShowFollower', FollowerAbilityOptions)
+	-- hooksecurefunc('GarrisonFollowerPage_ShowFollower', FollowerAbilityOptions)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
 		UpdateThreatCounters(GarrisonRecruitSelectFrame)
 		for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do
@@ -995,7 +999,7 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('FloatingGarrisonMission_Show', UpdateMissionTooltip)
 	hooksecurefunc('GarrisonMissionButton_SetInProgressTooltip', UpdateInProgressMissionTooltip)
 
-	hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
+	--[[ hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
 		-- called when opening mission complete again w/o animation
 		if not missionList or #missionList == 0 or index == 0 or index > #missionList then return end
 		UpdateMissionCompleteText()
@@ -1007,7 +1011,7 @@ function addon:ADDON_LOADED(event, arg1)
 			-- only react OnStart
 			UpdateMissionCompleteText()
 		end
-	end)
+	end)--]]
 	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
 
 	-- show garrison buildings in minimap button tooltip
@@ -1045,10 +1049,10 @@ function addon:ADDON_LOADED(event, arg1)
 		page:SetPoint('TOPRIGHT', '$parent', 'TOPRIGHT', -55, -34-30)
 		page:SetHeight(550)
 
-		hooksecurefunc('GarrisonMissionPage_SetPartySize', function(size, numEnemies)
+		--[[ hooksecurefunc('GarrisonMissionPage_SetPartySize', function(size, numEnemies)
 			local from, anchor, to, x, y = page.BuffsFrame:GetPoint()
 			page.BuffsFrame:SetPoint(from, anchor, to, x, y - 18)
-		end)
+		end) --]]
 
 		page:HookScript('OnShow', function(self)
 			GarrisonMissionFrame.FollowerTab.NumFollowers:SetParent(GarrisonMissionFrame.MissionTab)

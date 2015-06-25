@@ -189,7 +189,7 @@ local function GetMissionThreats(missionID)
 
 	local hasThreats = false
 	local enemies = select(8, C_Garrison.GetMissionInfo(missionID))
-	for i, enemy in ipairs(enemies) do
+	for i, enemy in ipairs(enemies or emptyTable) do
 		for threatID, info in pairs(enemy.mechanics) do
 			hasThreats = true
 			threats[threatID] = (threats[threatID] or 0) + 1
@@ -524,7 +524,7 @@ local function UpdateMissionList()
 			numThreats = numThreats + 1
 		end
 
-		if not active and addon.db.showRequiredResources then
+		if not active and addon.db.showRequiredResources and (mission.cost or 0) > 0 then
 			local duration = mission.duration
 			-- TODO: add more steps to colorize by duration
 			if mission.durationSeconds >= _G.GARRISON_LONG_MISSION_TIME then
@@ -886,7 +886,6 @@ end
 function addon:GARRISON_SHOW_LANDING_PAGE()
 	UpdateThreatCounters(GarrisonLandingPage)
 end
--- local frames = {GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}
 function addon:GARRISON_FOLLOWER_LIST_UPDATE()
 	-- always show counter buttons
 	GarrisonThreatCountersFrame:Show()

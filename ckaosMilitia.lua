@@ -561,23 +561,6 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 	end
 end
 
-local function FollowerOnDoubleClick(self, btn)
-	if not addon.db.doubleClickToAddFollower or GarrisonMissionFrame.selectedTab ~= 1 then return end
-	-- trigger second click handling
-	self:GetScript('OnClick')(self, btn)
-
-	-- add to mission
-	local status = C_Garrison.GetFollowerStatus(self.id)
-	if status == _G.GARRISON_FOLLOWER_IN_PARTY then
-		local missionID = GarrisonMissionFrame.MissionTab.MissionPage.missionInfo.missionID
-		C_Garrison.RemoveFollowerFromMission(missionID, self.id)
-	elseif not status then
-		-- cannot add inactive/on mission/... followers
-		GarrisonMissionPage_AddFollower(self.id)
-	end
-	GarrisonMissionPage_UpdateParty()
-end
-
 -- note: this will only work once Blizzard_GarrisonUI (and therefore this addon) is loaded
 local function ShowMinimapBuildings(self, motion)
 	if not addon.db.showMinimapBuildings then return end
@@ -723,13 +706,31 @@ local function UpdateInProgressMissionTooltip(missionInfo, showRewards)
 	GameTooltip:Show()
 end
 
--- append success chance to mission complete screen
-local function UpdateMissionCompleteText()
-	local frame = GarrisonMissionFrame.MissionComplete
-	local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID) or (frame.ChanceFrame.ChanceText:GetText():match('%d+') * 1)
-	if chance < 100 then
-		frame.ChanceFrame.ResultText:SetFormattedText('%1$s (%2$d%%)',
-			frame.currentMission.succeeded and _G.GARRISON_MISSION_SUCCESS or _G.GARRISON_MISSION_FAILED, chance)
+local function FollowerOnDoubleClick(self, btn)
+	if not addon.db.doubleClickToAddFollower then return end
+	local frame = self:GetParent():GetParent():GetParent():GetParent()
+	if not frame or not frame.MissionTab or not frame.MissionTab.MissionPage then return end
+
+	-- trigger second click handling
+	self:GetScript('OnClick')(self, btn)
+
+	local status = C_Garrison.GetFollowerStatus(self.info.followerID)
+	if status == _G.GARRISON_FOLLOWER_IN_PARTY then
+		-- remove from party
+		for index, follower in pairs(frame.MissionTab.MissionPage.Followers) do
+			if follower.info and follower.info.followerID == self.info.followerID then
+				frame:RemoveFollowerFromMission(follower, true)
+				break
+			end
+		end
+	elseif not status then
+		-- add to party
+		for index, follower in pairs(frame.MissionTab.MissionPage.Followers) do
+			if not follower.info then
+				frame:AssignFollowerToMission(follower, self.info)
+				break
+			end
+		end
 	end
 end
 
@@ -1061,11 +1062,6 @@ function addon:ADDON_LOADED(event, arg1)
 	if addon.db.showMinimapBuildings and GameTooltip:GetOwner() == minimapButton then
 		-- update minimap icon tooltip if it's currently shown
 		minimapButton:GetScript('OnEnter')(minimapButton)
-	end
-
-	-- double click to add follower to mission
-	for index, button in ipairs(GarrisonMissionFrame.FollowerList.listScroll.buttons) do
-		button:HookScript('OnDoubleClick', FollowerOnDoubleClick)
 	end
 
 	-- show follower tooltips in mission complete scene

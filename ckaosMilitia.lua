@@ -1113,11 +1113,6 @@ function addon:ADDON_LOADED(event, arg1)
 		page:SetPoint('TOPRIGHT', '$parent', 'TOPRIGHT', -55, -34-30)
 		page:SetHeight(550)
 
-		--[[ hooksecurefunc('GarrisonMissionPage_SetPartySize', function(size, numEnemies)
-			local from, anchor, to, x, y = page.BuffsFrame:GetPoint()
-			page.BuffsFrame:SetPoint(from, anchor, to, x, y - 18)
-		end) --]]
-
 		page:HookScript('OnShow', function(self)
 			GarrisonMissionFrame.FollowerTab.NumFollowers:SetParent(GarrisonMissionFrame.MissionTab)
 			GarrisonThreatCountersFrame:SetParent(GarrisonMissionFrame.MissionTab)
@@ -1125,6 +1120,12 @@ function addon:ADDON_LOADED(event, arg1)
 		page:HookScript('OnHide', function(self)
 			GarrisonMissionFrame.FollowerTab.NumFollowers:SetParent(GarrisonMissionFrame.FollowerTab)
 			GarrisonThreatCountersFrame:SetParent(GarrisonMissionFrame.FollowerTab)
+		end)
+		-- fix BuffsFrame overlapping followers
+		hooksecurefunc(GarrisonMission, 'UpdateMissionData', function(self, frame)
+			if not frame.BuffsFrame or not frame.BuffsFrame:IsShown() then return end
+			local anchor, anchorTo, otherAnchor, x, y = frame.BuffsFrame:GetPoint()
+			frame.BuffsFrame:SetPoint(anchor, anchorTo, otherAnchor, x, 198 - 18)
 		end)
 	end
 

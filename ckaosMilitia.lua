@@ -23,7 +23,6 @@ end)
 addon.frame:RegisterEvent('ADDON_LOADED')
 
 addon.defaults = {
-	skipBattleAnimation = true,
 	battleAnimDuration = 0,
 	showExtraMissionInfo = true,
 	showMissionThreats = true,
@@ -402,14 +401,6 @@ local function UpdateThreatCounters(self)
 	else
 		HideThreatCounterTabs()
 	end
-end
-
--- allow to immediately click the reward chest
-local function SkipBattleAnimation(self, missionID, canComplete, success)
-	if not addon.db.skipBattleAnimation then return end
-	self.Stage.EncountersFrame.FadeOut:Play()
-	self.animIndex = GarrisonMissionComplete_FindAnimIndexFor(GarrisonMissionComplete_AnimRewards) - 1
-	self.animTimeLeft = addon.db.battleAnimDuration
 end
 
 -- add extra info to mission list for easier overview
@@ -1003,15 +994,66 @@ function addon:ADDON_LOADED(event, arg1)
 		if not missionList or #missionList == 0 or index == 0 or index > #missionList then return end
 		UpdateMissionCompleteText()
 	end)
-	local animIndex = GarrisonMissionComplete_FindAnimIndexFor(GarrisonMissionComplete_AnimRewards)
-	hooksecurefunc('GarrisonMissionComplete_OnUpdate', function(self, elapsed)
-		-- can't hook GarrisonMissionComplete_AnimRewards :(
-		if self.animIndex == animIndex and self.animTimeLeft == 0.75 then
-			-- only react OnStart
-			UpdateMissionCompleteText()
+
+	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', function(self, key)
+		-- TODO: skip animations but wait on rewards
+		-- other key options: (L|R)ALT, ENTER, ESCAPE, ...
+		if key == 'LSHIFT' or key == 'RSHIFT' then
+			self:SetPropagateKeyboardInput(false)
+			local animIndex = self.animIndex
+			-- checking for animIndex to see if animations have started
+			if animIndex and not self.skipAnimations then
+				self.skipAnimations = true
+				local followersInAnimIndex = self:FindAnimIndexFor(self.AnimFollowersIn)
+				if animIndex < followersInAnimIndex then
+					-- STATE: animating through fights or rewards
+					-- play sounds if we haven't yet
+					local playSound = animIndex < self:FindAnimIndexFor(GarrisonMissionComplete.AnimRewards)
+					-- hide encounters
+					self.Stage.EncountersFrame.FadeOut:Stop()
+					self.Stage.EncountersFrame:Hide()
+					-- rewards bg
+					self.BonusRewards.Saturated:Show()
+					self.BonusRewards.Saturated:SetAlpha(1)
+					-- success or failure text
+					self.ChanceFrame.SuccessChanceInAnim:Stop()
+					self.ChanceFrame.ResultAnim:Stop()
+					self.ChanceFrame.ChanceText:SetAlpha(0)
+					self.ChanceFrame.ChanceGlow:SetAlpha(0)
+					self.ChanceFrame.SuccessGlow:SetAlpha(0)
+					self.ChanceFrame.Banner:SetAlpha(1)
+					self.ChanceFrame.Banner:SetWidth(GARRISON_MISSION_COMPLETE_BANNER_WIDTH)
+					self.ChanceFrame.ResultText:SetAlpha(1)
+
+					-- this is where things are different
+					if self.currentMission.succeeded then
+						self.ChanceFrame.ResultText:SetText(GARRISON_MISSION_SUCCESS)
+						self.ChanceFrame.ResultText:SetTextColor(0.1, 1, 0.1)
+						if playSound then
+							PlaySound('UI_Garrison_CommandTable_MissionSuccess_Stinger')
+						end
+						-- we do not open the chest automatically
+						-- remove chest
+						--[[ self.BonusRewards.ChestModel.OpenAnim:Stop()
+						self.BonusRewards.ChestModel.LockBurstAnim:Stop()
+						self.BonusRewards.ChestModel:SetAlpha(0)
+						self.BonusRewards.ChestModel.ClickFrame:Hide()
+						-- rewards and enable Next button
+						self:ShowRewards() --]]
+					else
+						self.ChanceFrame.ResultText:SetText(GARRISON_MISSION_FAILED)
+						self.ChanceFrame.ResultText:SetTextColor(1, 0.1, 0.1)
+						if playSound then
+							PlaySound('UI_Garrison_Mission_Complete_MissionFail_Stinger')
+						end
+						-- enable Next button
+						-- self.NextMissionButton:Enable()
+					end
+					self:BeginAnims(self:FindAnimIndexFor(self.AnimRewards) - 1) -- was: AnimCleanUp
+				end
+			end
 		end
-	end)--]]
-	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
+	end)
 
 	-- show garrison buildings in minimap button tooltip
 	local minimapButton = GarrisonLandingPageMinimapButton

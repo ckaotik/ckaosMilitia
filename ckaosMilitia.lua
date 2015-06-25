@@ -1070,6 +1070,7 @@ function addon:ADDON_LOADED(event, arg1)
 	end
 	GarrisonThreatCountersFrame:HookScript('OnShow', UpdateThreatCounterButtons)
 
+	addon:GARRISON_UPGRADEABLE_RESULT('GARRISON_UPGRADEABLE_RESULT')
 	-- Blizzard_GarrisonUI might have been forcably loaded
 	-- try again when more info is available
 	addon.frame:RegisterEvent('GARRISON_UPGRADEABLE_RESULT')

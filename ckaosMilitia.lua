@@ -751,27 +751,28 @@ local infoDummy = {
 	showCounters = false,
 	name = '',
 	icon = '',
+	factor = 300,
 }
-local function UpdateFollowerCounters(button, follower, showCounters)
+local function UpdateFollowerCounters(frame, button, follower, showCounters, lastUpdate)
 	if (not showCounters and not addon.db.showListCounters)
-		or (showCounters and not addon.db.showLowLevelCounters) then
-		--	or not button.isCollected or follower.status == GARRISON_FOLLOWER_INACTIVE
+		or (showCounters and not addon.db.showLowLevelCounters)
+		or not frame:IsShown() then
 		-- only display on listings and/or low levels on mission grouping
 		return
 	end
-	if showCounters and GarrisonMissionFrame.followerCounters
-		and GarrisonMissionFrame.followerCounters[follower.followerID] then
+	if showCounters and frame.followerCounters
+		and frame.followerCounters[follower.followerID] then
 		-- already displaying counters for this follower
 		return
 	end
-	-- GarrisonMissionFrame.FollowerList.listScroll.buttons[i]
-	-- local listFrame = button:GetParent():GetParent():GetParent()
-	-- if listFrame == GarrisonBuildingFrame.FollowerList then return end
 
-	local missionID = MISSION_PAGE_FRAME.missionInfo and MISSION_PAGE_FRAME.missionInfo.missionID
-	local threats   = showCounters and GetMissionThreats(missionID)
-	local counters  = GetFollowerCounters(follower.followerID)
-	local numShown  = 0
+	local missionID
+	if frame.MissionTab and frame.MissionTab.MissionPage.missionInfo then
+		missionID = frame.MissionTab.MissionPage.missionInfo.missionID
+	end
+	local threats  = showCounters and GetMissionThreats(missionID)
+	local counters = GetFollowerCounters(follower.followerID)
+	local numShown = 0
 	for threatID in pairs(counters or emptyTable) do
 		if numShown >= 4 then break end
 		if not threats or threats[threatID] then
@@ -779,23 +780,20 @@ local function UpdateFollowerCounters(button, follower, showCounters)
 			local info = infoDummy
 			      info.name = THREATS[threatID].name
 			      info.icon = THREATS[threatID].icon
-			GarrisonFollowerButton_SetCounterButton(button, numShown, info)
+			GarrisonFollowerButton_SetCounterButton(button, follower.followerID, numShown, info, nil, follower.followerTypeID)
 			button.Counters[numShown].info.showCounters = false
 		end
 	end
 
 	-- we might have added abilities, when there were only traits before
-	local traits = showCounters and GarrisonMissionFrame.followerTraits
-		and GarrisonMissionFrame.followerTraits[follower.followerID]
+	local traits = showCounters and frame.followerTraits
+		and frame.followerTraits[follower.followerID]
 	for i = 1, traits and #traits or 0 do
 		if numShown >= 4 then break end
 		numShown = numShown + 1
-		GarrisonFollowerButton_SetCounterButton(button, numShown, traits[i])
+		GarrisonFollowerButton_SetCounterButton(button, follower.followerID, numShown, traits[i], nil, follower.followerTypeID)
 	end
-	if button.Counters then
-		-- TODO: error on landing page
-		button.Counters[1]:SetPoint('TOPRIGHT', -8, numShown <= 2 and -16 or -4)
-	end
+	button.Counters[1]:SetPoint('TOPRIGHT', -8, numShown <= 2 and -16 or -4)
 end
 
 local function MissionEnemiesCheckPseudoCounter(counterID)
@@ -858,7 +856,7 @@ local function MissionUpdateCounters()
 			enemyFrame.Mechanics[mechanicIndex].isPseudoCounter = nil
 		end
 	end
-	MissionUpdateParty()
+	-- MissionUpdateParty()
 
 	-- update checkmarks
 	for i = 1, #MISSION_PAGE_FRAME.Enemies do
@@ -1000,6 +998,7 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('FloatingGarrisonMission_Show', UpdateMissionTooltip)
 	hooksecurefunc('GarrisonMissionButton_SetInProgressTooltip', UpdateInProgressMissionTooltip)
 	hooksecurefunc('GarrisonShipyardMapMission_SetTooltip', UpdateInProgressShipyardMissionTooltip)
+	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
 
 	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', function(self, key)
 		-- TODO: skip animations but wait on rewards

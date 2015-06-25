@@ -4,7 +4,7 @@ _G[addonName] = addon
 -- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonRecruitSelectFrame, GarrisonLandingPage, GarrisonLandingPageReport, ITEM_QUALITY_COLORS, LE_ITEM_QUALITY_COMMON
 -- GLOBALS: GarrisonFollowerList_UpdateFollowers, GarrisonThreatCountersFrame, GarrisonFollowerTooltip, GarrisonFollowerTooltip_Show, GarrisonBuildingFrame, FloatingGarrisonMissionTooltip
 -- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick, GetCurrencyInfo
--- GLOBALS: GarrisonMissionComplete_FindAnimIndexFor, GarrisonMissionComplete_AnimRewards, GarrisonLandingPageMinimapButton, GarrisonMissionPageFollowerFrame_OnEnter, GarrisonMissionPageFollowerFrame_OnLeave, GarrisonFollowerButton_SetCounterButton, GarrisonMissionPage_AddFollower, GarrisonMissionPage_UpdateParty, GarrisonLandingPageReportList_FormatXPNumbers
+-- GLOBALS: GarrisonLandingPageMinimapButton, GarrisonFollowerButton_SetCounterButton, GarrisonLandingPageReportList_FormatXPNumbers
 -- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc, tContains, select, rawget, setmetatable
 
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
@@ -911,7 +911,7 @@ function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerID, xpGain, oldXP, ol
 	end
 end
 
-function addon:GARRISON_FOLLOWER_ADDED(event, followerID, name, displayID, level, quality)
+function addon:GARRISON_FOLLOWER_ADDED(event, followerID, name, class, displayID, level, quality, isUpgraded, texPrefix, followerType)
 	ScanFollowerAbilities(followerID)
 end
 
@@ -960,16 +960,12 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_UPGRADED')
 
 	-- setup hooks
-	-- hooksecurefunc('GarrisonMissionComplete_OnMissionCompleteResponse', SkipBattleAnimation)
-	-- hooksecurefunc('GarrisonMissionPage_ClearParty', UpdateMissionList)
-	-- hooksecurefunc('GarrisonMissionPage_UpdateParty', MissionUpdateParty)
 	hooksecurefunc('GarrisonMissionPage_SetCounters', MissionUpdateCounters)
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonFollowerButton_AddAbility', FollowerListReplaceAbilityWithThreat)
-	-- hooksecurefunc('GarrisonFollowerPage_ShowFollower', FollowerAbilityOptions)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
 		UpdateThreatCounters(GarrisonRecruitSelectFrame)
 		for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do

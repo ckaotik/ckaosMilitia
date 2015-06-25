@@ -594,31 +594,30 @@ local function MissionCompleteFollowerOnClick(self, btn, up)
 	HandleModifiedItemClick(followerLink)
 end
 
-local function MissionCompleteFollowerOnEnter(self, ...)
+local dummyFollowerInfo = {followerID = 0, garrFollowerID = 0}
+local function MissionCompleteFollowerOnEnter(self)
 	if not addon.db.missionCompleteFollowerTooltips then return end
-	local mission    = GarrisonMissionFrame.MissionComplete.currentMission
+	local frame = self:GetParent():GetParent():GetParent():GetParent()
+
 	local followerID = self.followerID
 	local garrFollowerID = C_Garrison.GetFollowerLink(followerID):match('garrfollower:(%d+)') * 1
+	dummyFollowerInfo.followerID = followerID
+	dummyFollowerInfo.garrFollowerID = garrFollowerID
 
-	GarrisonFollowerTooltip:ClearAllPoints()
-	GarrisonFollowerTooltip:SetPoint('TOPLEFT', self, 'BOTTOMRIGHT')
-	GarrisonFollowerTooltip_Show(garrFollowerID,
-		C_Garrison.IsFollowerCollected(garrFollowerID),
-		C_Garrison.GetFollowerQuality(followerID),
-		C_Garrison.GetFollowerLevel(followerID),
-		C_Garrison.GetFollowerXP(followerID),
-		C_Garrison.GetFollowerLevelXP(followerID),
-		C_Garrison.GetFollowerItemLevelAverage(followerID),
-		C_Garrison.GetFollowerAbilityAtIndex(followerID, 1),
-		C_Garrison.GetFollowerAbilityAtIndex(followerID, 2),
-		C_Garrison.GetFollowerAbilityAtIndex(followerID, 3),
-		C_Garrison.GetFollowerAbilityAtIndex(followerID, 4),
-		C_Garrison.GetFollowerTraitAtIndex(followerID, 1),
-		C_Garrison.GetFollowerTraitAtIndex(followerID, 2),
-		C_Garrison.GetFollowerTraitAtIndex(followerID, 3),
-		C_Garrison.GetFollowerTraitAtIndex(followerID, 4),
-		true,
-		(C_Garrison.GetFollowerBiasForMission(mission.missionID, followerID) or 0) < 0.0)
+	-- TODO: this manual override sucks ...
+	frame.MissionTab.MissionPage.missionInfo = frame.MissionComplete.currentMission
+	self:GetParent().missionInfo = frame.MissionComplete.currentMission
+
+	local tooltipFunc = frame.MissionTab.MissionPage.Follower1:GetScript('OnEnter')
+	self.info = dummyFollowerInfo
+	tooltipFunc(self)
+	self.info = nil
+end
+
+local function MissionCompleteFollowerOnLeave(self)
+	local frame = self:GetParent():GetParent():GetParent():GetParent()
+	local tooltipFunc = frame.MissionTab.MissionPage.Follower1:GetScript('OnLeave')
+	tooltipFunc(self)
 end
 
 local function TooltipReplaceAbilityWithThreat(tooltipFrame, data)
@@ -704,6 +703,17 @@ local function UpdateInProgressMissionTooltip(missionInfo, showRewards)
 
 	-- update tooltip dimensions
 	GameTooltip:Show()
+end
+
+local function UpdateInProgressShipyardMissionTooltip(missionInfo, inProgress)
+	local tooltipFrame = GarrisonShipyardMapMissionTooltip
+
+	-- color followers by quality
+	for i, followerID in ipairs(missionInfo.followers or emptyTable) do
+		local quality = C_Garrison.GetFollowerQuality(followerID)
+		local color = _G.ITEM_QUALITY_COLORS[quality]
+		tooltipFrame.Ships[i]:SetTextColor(color.r, color.g, color.b)
+	end
 end
 
 local function FollowerOnDoubleClick(self, btn)
@@ -989,12 +999,7 @@ function addon:ADDON_LOADED(event, arg1)
 	-- show reward info
 	hooksecurefunc('FloatingGarrisonMission_Show', UpdateMissionTooltip)
 	hooksecurefunc('GarrisonMissionButton_SetInProgressTooltip', UpdateInProgressMissionTooltip)
-
-	--[[ hooksecurefunc('GarrisonMissionComplete_Initialize', function(missionList, index)
-		-- called when opening mission complete again w/o animation
-		if not missionList or #missionList == 0 or index == 0 or index > #missionList then return end
-		UpdateMissionCompleteText()
-	end)
+	hooksecurefunc('GarrisonShipyardMapMission_SetTooltip', UpdateInProgressShipyardMissionTooltip)
 
 	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', function(self, key)
 		-- TODO: skip animations but wait on rewards
@@ -1056,20 +1061,34 @@ function addon:ADDON_LOADED(event, arg1)
 		end
 	end)
 
+	-- for some reason, none of GarrisonFollowerList's hooks works here
+	local frames = {GarrisonMissionFrame, GarrisonShipyardFrame, GarrisonLandingPage}
+	for _, frame in pairs(frames) do
+		-- display learnable counters
+		hooksecurefunc(frame.FollowerList, 'ShowFollower', function(self, followerID)
+			FollowerAbilityOptions(self:GetParent().FollowerTab, followerID)
+		end)
+
+		if frame.MissionComplete then
+			-- double click to add follower to mission
+			for index, button in pairs(frame.FollowerList.listScroll.buttons) do
+				button:HookScript('OnDoubleClick', FollowerOnDoubleClick)
+			end
+			-- enable follower tooltips & links on mission complete
+			for index, button in pairs(frame.MissionComplete.Stage.FollowersFrame.Followers) do
+				button:HookScript('OnMouseDown', MissionCompleteFollowerOnClick)
+				button:SetScript('OnEnter', MissionCompleteFollowerOnEnter)
+				button:SetScript('OnLeave', MissionCompleteFollowerOnLeave)
+			end
+		end
+	end
+
 	-- show garrison buildings in minimap button tooltip
 	local minimapButton = GarrisonLandingPageMinimapButton
 	minimapButton:HookScript('OnEnter', ShowMinimapBuildings)
 	if addon.db.showMinimapBuildings and GameTooltip:GetOwner() == minimapButton then
 		-- update minimap icon tooltip if it's currently shown
 		minimapButton:GetScript('OnEnter')(minimapButton)
-	end
-
-	-- show follower tooltips in mission complete scene
-	for index, frame in pairs(GarrisonMissionFrame.MissionComplete.Stage.FollowersFrame.Followers) do
-		-- these frames do not properly set their OnEnter/OnLeave scripts
-		frame:HookScript('OnMouseDown', MissionCompleteFollowerOnClick)
-		frame:SetScript('OnEnter', MissionCompleteFollowerOnEnter)
-		frame:SetScript('OnLeave', GarrisonMissionPageFollowerFrame_OnLeave)
 	end
 
 	if addon.db.setMissionFrameMovable then

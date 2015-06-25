@@ -1000,6 +1000,15 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonShipyardMapMission_SetTooltip', UpdateInProgressShipyardMissionTooltip)
 	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
 
+	-- show success chance on finished missions
+	hooksecurefunc(GarrisonMission, 'MissionCompleteInitialize', function(self, missionList, index)
+		local frame = self.MissionComplete
+		local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
+		if chance and chance < 100 then
+			frame.ChanceFrame.ResultText:SetFormattedText('%1$s (%2$d%%)', frame.currentMission.succeeded and _G.GARRISON_MISSION_SUCCESS or _G.GARRISON_MISSION_FAILED, chance)
+		end
+	end)
+
 	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', function(self, key)
 		-- TODO: skip animations but wait on rewards
 		-- other key options: (L|R)ALT, ENTER, ESCAPE, ...

@@ -591,34 +591,36 @@ local function MissionCompleteFollowerOnEnter(self)
 	if not addon.db.missionCompleteFollowerTooltips then return end
 	local frame = self:GetParent():GetParent():GetParent():GetParent()
 
-	local followerType = frame:GetFollowerType()
 	local followerID = self.followerID
+	local followerType = C_Garrison.GetFollowerTypeByID(followerID)
 	local garrFollowerID = C_Garrison.GetFollowerLink(followerID):match('garrfollower:(%d+)') * 1
-	dummyFollowerInfo.followerID = followerID
-	dummyFollowerInfo.garrFollowerID = garrFollowerID
 
-	-- TODO: this manual override sucks ...
-	local revert = false
-	if followerType == LE_FOLLOWER_TYPE_GARRISON_6_0 then
-		revert = frame.MissionTab.MissionPage.missionInfo
-		frame.MissionTab.MissionPage.missionInfo = frame.MissionComplete.currentMission
-	else
-		revert = self:GetParent().missionInfo
-		self:GetParent().missionInfo = frame.MissionComplete.currentMission
+	local tooltip, xpWidth = GarrisonFollowerTooltip, nil
+	if followerType == LE_FOLLOWER_TYPE_SHIPYARD_6_2 then
+		tooltip, xpWidth = GarrisonShipyardFollowerTooltip, 231
 	end
-
-	local tooltipFunc = frame.MissionTab.MissionPage.Follower1:GetScript('OnEnter')
-	self.info = dummyFollowerInfo
-	tooltipFunc(self)
-	self.info = nil
-	if revert ~= false then
-		if followerType == LE_FOLLOWER_TYPE_GARRISON_6_0 then
-			frame.MissionTab.MissionPage.missionInfo = revert
-		else
-			self:GetParent().missionInfo = revert
-		end
-		revert = false
-	end
+	tooltip:ClearAllPoints()
+	tooltip:SetPoint('TOPLEFT', self, 'BOTTOMRIGHT')
+	GarrisonFollowerTooltip_Show(garrFollowerID,
+		C_Garrison.IsFollowerCollected(garrFollowerID),
+		C_Garrison.GetFollowerQuality(followerID),
+		C_Garrison.GetFollowerLevel(followerID),
+		C_Garrison.GetFollowerXP(followerID),
+		C_Garrison.GetFollowerLevelXP(followerID),
+		C_Garrison.GetFollowerItemLevelAverage(followerID),
+		C_Garrison.GetFollowerAbilityAtIndex(followerID, 1),
+		C_Garrison.GetFollowerAbilityAtIndex(followerID, 2),
+		C_Garrison.GetFollowerAbilityAtIndex(followerID, 3),
+		C_Garrison.GetFollowerAbilityAtIndex(followerID, 4),
+		C_Garrison.GetFollowerTraitAtIndex(followerID, 1),
+		C_Garrison.GetFollowerTraitAtIndex(followerID, 2),
+		C_Garrison.GetFollowerTraitAtIndex(followerID, 3),
+		C_Garrison.GetFollowerTraitAtIndex(followerID, 4),
+		true, -- no ability description
+		false, -- under bias
+		tooltip,
+		xpWidth
+	)
 end
 
 local function MissionCompleteFollowerOnLeave(self)

@@ -23,7 +23,6 @@ end)
 addon.frame:RegisterEvent('ADDON_LOADED')
 
 addon.defaults = {
-	battleAnimDuration = 0,
 	showExtraMissionInfo = true,
 	showMissionThreats = true,
 	showRewardCounts = true,
@@ -257,16 +256,9 @@ local function MissionOnEnter(self, button)
 		return
 	end
 
-	local numLines = GameTooltip:NumLines()
-	if C_Garrison.IsOnGarrisonMap() then
-		GameTooltip:AddLine(_G.GARRISON_MISSION_AVAILABILITY)
-		GameTooltip:AddLine(info.offerTimeRemaining, 1, 1, 1)
-	else
-		_G['GameTooltipTextLeft'..numLines - 1]:SetText(_G.GARRISON_MISSION_AVAILABILITY)
-		_G['GameTooltipTextLeft'..numLines]:SetText(info.offerTimeRemaining, 1, 1, 1)
-		GameTooltip:AddLine(' ')
-		GameTooltip:AddLine(_G.GARRISON_MISSION_TOOLTIP_RETURN_TO_START, nil, nil, nil, 1)
-	end
+	-- display mission expiry
+	GameTooltip:AddLine(_G.GARRISON_MISSION_AVAILABILITY)
+	GameTooltip:AddLine(info.offerTimeRemaining, 1, 1, 1)
 	GameTooltip:Show()
 end
 
@@ -599,19 +591,34 @@ local function MissionCompleteFollowerOnEnter(self)
 	if not addon.db.missionCompleteFollowerTooltips then return end
 	local frame = self:GetParent():GetParent():GetParent():GetParent()
 
+	local followerType = frame:GetFollowerType()
 	local followerID = self.followerID
 	local garrFollowerID = C_Garrison.GetFollowerLink(followerID):match('garrfollower:(%d+)') * 1
 	dummyFollowerInfo.followerID = followerID
 	dummyFollowerInfo.garrFollowerID = garrFollowerID
 
 	-- TODO: this manual override sucks ...
-	frame.MissionTab.MissionPage.missionInfo = frame.MissionComplete.currentMission
-	self:GetParent().missionInfo = frame.MissionComplete.currentMission
+	local revert = false
+	if followerType == LE_FOLLOWER_TYPE_GARRISON_6_0 then
+		revert = frame.MissionTab.MissionPage.missionInfo
+		frame.MissionTab.MissionPage.missionInfo = frame.MissionComplete.currentMission
+	else
+		revert = self:GetParent().missionInfo
+		self:GetParent().missionInfo = frame.MissionComplete.currentMission
+	end
 
 	local tooltipFunc = frame.MissionTab.MissionPage.Follower1:GetScript('OnEnter')
 	self.info = dummyFollowerInfo
 	tooltipFunc(self)
 	self.info = nil
+	if revert ~= false then
+		if followerType == LE_FOLLOWER_TYPE_GARRISON_6_0 then
+			frame.MissionTab.MissionPage.missionInfo = revert
+		else
+			self:GetParent().missionInfo = revert
+		end
+		revert = false
+	end
 end
 
 local function MissionCompleteFollowerOnLeave(self)
@@ -872,12 +879,70 @@ local function MissionUpdateCounters()
 	end
 end
 
+local function MissionCompleteSkipAnimations(self, key)
+	-- other key options: (L|R)ALT, ENTER, ESCAPE, ...
+	if key == 'LSHIFT' or key == 'RSHIFT' then
+		self:SetPropagateKeyboardInput(false)
+		local animIndex = self.animIndex
+		if animIndex and not self.skipAnimations then
+			local followersInAnimIndex = self:FindAnimIndexFor(self.AnimFollowersIn)
+			if animIndex < followersInAnimIndex then
+				-- play sounds if we haven't yet
+				local playSound = animIndex < self:FindAnimIndexFor(GarrisonMissionComplete.AnimRewards)
+				-- hide encounters
+				self.Stage.EncountersFrame.FadeOut:Stop()
+				self.Stage.EncountersFrame:Hide()
+				-- rewards bg
+				self.BonusRewards.Saturated:Show()
+				self.BonusRewards.Saturated:SetAlpha(1)
+				-- success or failure text
+				self.ChanceFrame.SuccessChanceInAnim:Stop()
+				self.ChanceFrame.ResultAnim:Stop()
+				self.ChanceFrame.ChanceText:SetAlpha(0)
+				self.ChanceFrame.ChanceGlow:SetAlpha(0)
+				self.ChanceFrame.SuccessGlow:SetAlpha(0)
+				self.ChanceFrame.Banner:SetAlpha(1)
+				self.ChanceFrame.Banner:SetWidth(GARRISON_MISSION_COMPLETE_BANNER_WIDTH)
+				self.ChanceFrame.ResultText:SetAlpha(1)
+
+				if playSound then
+					if self.currentMission.succeeded then
+						PlaySound('UI_Garrison_CommandTable_MissionSuccess_Stinger')
+					else
+						PlaySound('UI_Garrison_Mission_Complete_MissionFail_Stinger')
+					end
+				end
+				self:BeginAnims(self:FindAnimIndexFor(self.AnimRewards) - 1)
+			end
+		end
+	end
+end
+
+local function MissionCompleteSuccessChance(self, missionList, index)
+	local frame = self.MissionComplete
+	local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
+	if chance and chance < 100 then
+		local result
+		if frame.currentMission.succeeded then
+			result = _G.GARRISON_MISSION_SUCCESS
+			frame.ChanceFrame.ResultText:SetTextColor(0.1, 1, 0.1)
+		else
+			result = _G.GARRISON_MISSION_FAILED
+			frame.ChanceFrame.ResultText:SetTextColor(1, 0.1, 0.1)
+		end
+		frame.ChanceFrame.ResultText:SetFormattedText('%1$s (%2$d%%)', result, chance)
+	end
+end
+
 -- --------------------------------------------------------
 --  Event handlers
 -- --------------------------------------------------------
 function addon:GARRISON_MISSION_NPC_OPENED()
 	-- note: this is also triggered on successful mission completion
 	UpdateThreatCounters(GarrisonMissionFrame)
+end
+function addon:GARRISON_SHIPYARD_NPC_OPENED()
+	UpdateThreatCounters(GarrisonShipyardFrame)
 end
 function addon:GARRISON_RECRUITMENT_NPC_OPENED()
 	UpdateThreatCounters(GarrisonRecruiterFrame)
@@ -950,8 +1015,8 @@ function addon:ADDON_LOADED(event, arg1)
 	})
 
 	-- register events
-	-- GARRISON_SHIPYARD_NPC_OPENED and GARRISON_SHIPYARD_NPC_CLOSED
 	addon.frame:RegisterEvent('GARRISON_MISSION_NPC_OPENED')
+	addon.frame:RegisterEvent('GARRISON_SHIPYARD_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_SHOW_LANDING_PAGE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')
@@ -964,8 +1029,9 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
-	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonFollowerButton_AddAbility', FollowerListReplaceAbilityWithThreat)
+	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
+	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
 		UpdateThreatCounters(GarrisonRecruitSelectFrame)
 		for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do
@@ -981,6 +1047,17 @@ function addon:ADDON_LOADED(event, arg1)
 		end
 	end)
 
+	-- skip battle animations on finished missions
+	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', MissionCompleteSkipAnimations)
+	-- show success chance on finished missions
+	hooksecurefunc(GarrisonMission, 'MissionCompleteInitialize', MissionCompleteSuccessChance)
+
+	-- show extra reward info in tooltips
+	hooksecurefunc('FloatingGarrisonMission_Show', UpdateMissionTooltip)
+	hooksecurefunc('GarrisonMissionButton_SetInProgressTooltip', UpdateInProgressMissionTooltip)
+	hooksecurefunc('GarrisonShipyardMapMission_SetTooltip', UpdateInProgressShipyardMissionTooltip)
+	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
+
 	-- mission tooltips
 	hooksecurefunc('GarrisonMissionButton_OnEnter', MissionOnEnter)
 	for _, button in pairs(GarrisonMissionFrame.MissionTab.MissionList.listScroll.buttons) do
@@ -990,80 +1067,6 @@ function addon:ADDON_LOADED(event, arg1)
 	for _, button in pairs(GarrisonLandingPageReport.List.listScroll.buttons) do
 		button:HookScript('OnEnter', MissionOnEnter)
 	end
-	-- show reward info
-	hooksecurefunc('FloatingGarrisonMission_Show', UpdateMissionTooltip)
-	hooksecurefunc('GarrisonMissionButton_SetInProgressTooltip', UpdateInProgressMissionTooltip)
-	hooksecurefunc('GarrisonShipyardMapMission_SetTooltip', UpdateInProgressShipyardMissionTooltip)
-	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
-
-	-- show success chance on finished missions
-	hooksecurefunc(GarrisonMission, 'MissionCompleteInitialize', function(self, missionList, index)
-		local frame = self.MissionComplete
-		local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
-		if chance and chance < 100 then
-			frame.ChanceFrame.ResultText:SetFormattedText('%1$s (%2$d%%)', frame.currentMission.succeeded and _G.GARRISON_MISSION_SUCCESS or _G.GARRISON_MISSION_FAILED, chance)
-		end
-	end)
-
-	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', function(self, key)
-		-- TODO: skip animations but wait on rewards
-		-- other key options: (L|R)ALT, ENTER, ESCAPE, ...
-		if key == 'LSHIFT' or key == 'RSHIFT' then
-			self:SetPropagateKeyboardInput(false)
-			local animIndex = self.animIndex
-			-- checking for animIndex to see if animations have started
-			if animIndex and not self.skipAnimations then
-				self.skipAnimations = true
-				local followersInAnimIndex = self:FindAnimIndexFor(self.AnimFollowersIn)
-				if animIndex < followersInAnimIndex then
-					-- STATE: animating through fights or rewards
-					-- play sounds if we haven't yet
-					local playSound = animIndex < self:FindAnimIndexFor(GarrisonMissionComplete.AnimRewards)
-					-- hide encounters
-					self.Stage.EncountersFrame.FadeOut:Stop()
-					self.Stage.EncountersFrame:Hide()
-					-- rewards bg
-					self.BonusRewards.Saturated:Show()
-					self.BonusRewards.Saturated:SetAlpha(1)
-					-- success or failure text
-					self.ChanceFrame.SuccessChanceInAnim:Stop()
-					self.ChanceFrame.ResultAnim:Stop()
-					self.ChanceFrame.ChanceText:SetAlpha(0)
-					self.ChanceFrame.ChanceGlow:SetAlpha(0)
-					self.ChanceFrame.SuccessGlow:SetAlpha(0)
-					self.ChanceFrame.Banner:SetAlpha(1)
-					self.ChanceFrame.Banner:SetWidth(GARRISON_MISSION_COMPLETE_BANNER_WIDTH)
-					self.ChanceFrame.ResultText:SetAlpha(1)
-
-					-- this is where things are different
-					if self.currentMission.succeeded then
-						self.ChanceFrame.ResultText:SetText(GARRISON_MISSION_SUCCESS)
-						self.ChanceFrame.ResultText:SetTextColor(0.1, 1, 0.1)
-						if playSound then
-							PlaySound('UI_Garrison_CommandTable_MissionSuccess_Stinger')
-						end
-						-- we do not open the chest automatically
-						-- remove chest
-						--[[ self.BonusRewards.ChestModel.OpenAnim:Stop()
-						self.BonusRewards.ChestModel.LockBurstAnim:Stop()
-						self.BonusRewards.ChestModel:SetAlpha(0)
-						self.BonusRewards.ChestModel.ClickFrame:Hide()
-						-- rewards and enable Next button
-						self:ShowRewards() --]]
-					else
-						self.ChanceFrame.ResultText:SetText(GARRISON_MISSION_FAILED)
-						self.ChanceFrame.ResultText:SetTextColor(1, 0.1, 0.1)
-						if playSound then
-							PlaySound('UI_Garrison_Mission_Complete_MissionFail_Stinger')
-						end
-						-- enable Next button
-						-- self.NextMissionButton:Enable()
-					end
-					self:BeginAnims(self:FindAnimIndexFor(self.AnimRewards) - 1) -- was: AnimCleanUp
-				end
-			end
-		end
-	end)
 
 	-- for some reason, none of GarrisonFollowerList's hooks works here
 	local frames = {GarrisonMissionFrame, GarrisonShipyardFrame, GarrisonLandingPage}

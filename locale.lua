@@ -1,6 +1,6 @@
 local addonName, addon, _ = ...
 
-addon.L = {
+local L = {
 	showTabs                     = 'Show threat tabs',
 	showTabsDesc                 = 'Display counterable threats as tabs that attach to several garrison frames.|n' .. _G.RED_FONT_COLOR_CODE..'Does not display on frames that also display Blizzard threat buttons.',
 	showMissionPageThreats       = 'Show threat buttons on mission page',
@@ -13,10 +13,6 @@ addon.L = {
 	showListCountersDesc         = 'Display follower\'s abilities in all lists, including landing page and follower tab.',
 	showMinimapBuildings         = 'Show buildings in minimap tooltip',
 	showMinimapBuildingsDesc     = 'Display active buildings in the Garrison minimap tooltip',
-	skipBattleAnimation          = 'Skip battle animation',
-	skipBattleAnimationDesc      = 'Skip the battle animation that is played before being able to collect mission rewards.',
-	battleAnimDuration           = 'Duration (in seconds)',
-	battleAnimDurationDesc       = 'Only works when "skip battle animation" is enabled.',
 	setMissionFrameMovable       = 'Move MissionFrame',
 	setMissionFrameMovableDesc   = 'Allow the mission frame to be moved.|n' .. _G.RED_FONT_COLOR_CODE..'This requires a reload.',
 	doubleClickToAddFollower     = 'Double-click to add followers',
@@ -43,4 +39,11 @@ addon.L = {
 	showRequiredResourcesDesc    = 'Append the amount of required resources to mission duration texts.',
 	showFollowerReturnTime       = 'Show return time',
 	showFollowerReturnTimeDesc   = 'Display follower return times in threat counter tab tooltips.',
+
+	skipAnimationInstructions    = 'Use %s to skip combat animations|nor %s to skip all animations.',
 }
+addon.L = L
+
+if GetLocale() == 'deDE' then
+	L.skipAnimationInstructions = 'Verwende %s um Kämpfe zu überspringen|noder %s um alle Animationen zu überspringen.'
+end

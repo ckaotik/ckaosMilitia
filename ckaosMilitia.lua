@@ -920,7 +920,7 @@ local function MissionCompleteSkipAnimations(self, key)
 	end
 end
 
-local function MissionCompleteSuccessChance(self, missionList, index)
+local function MissionCompleteSuccessChance(self)
 	local frame = self.MissionComplete
 	local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
 	if chance and chance < 100 then
@@ -1089,6 +1089,10 @@ function addon:ADDON_LOADED(event, arg1)
 				button:SetScript('OnEnter', MissionCompleteFollowerOnEnter)
 				button:SetScript('OnLeave', MissionCompleteFollowerOnLeave)
 			end
+			-- show success chance on finished missions
+			hooksecurefunc(frame.MissionComplete.ChanceFrame.ResultAnim, 'Play', function(self)
+				MissionCompleteSuccessChance(frame)
+			end)
 		end
 	end
 

@@ -1,3 +1,13 @@
+# 6.2v1
+- Updated for patch 6.2
+- Rewrote animation skipping code. Hold down shift to skip mission complete animations but keep displaying rewards
+- Fixed issue detecting available counters when low level missions report high req. ilevels
+- Extended double-click-to-toggle behaviour to ships
+- Extended mission complete tooltips to ships.
+- Mission list: Do not append resource cost when mission costs no resources.
+- Extended mission tooltips, including reward icons, follower level & quality
+- Fixed grayed out followers, threats and counts when loading together with Blizzard_GarrisonUI
+
 # 6.1v2
 - New: expiry time to every mission's tooltip (not just rare missions)
 - New: mission expiry in tooltips on landing page

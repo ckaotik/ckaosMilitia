@@ -2,7 +2,7 @@
 ## Author: ckaotik
 ## Title: ckaosMilitia
 ## Notes: Garrison UI Enhancements
-## Version: 6.1v2
+## Version: 6.2v1
 ## SavedVariables: ckaosMilitiaDB
 
 ## LoadOnDemand: 1

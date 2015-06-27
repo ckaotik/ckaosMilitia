@@ -592,8 +592,8 @@ local function MissionCompleteFollowerOnEnter(self)
 	local frame = self:GetParent():GetParent():GetParent():GetParent()
 
 	local followerID = self.followerID
-	local followerType = C_Garrison.GetFollowerTypeByID(followerID)
 	local garrFollowerID = C_Garrison.GetFollowerLink(followerID):match('garrfollower:(%d+)') * 1
+	local followerType = C_Garrison.GetFollowerTypeByID(garrFollowerID)
 
 	local tooltip, xpWidth = GarrisonFollowerTooltip, nil
 	if followerType == LE_FOLLOWER_TYPE_SHIPYARD_6_2 then
@@ -881,6 +881,26 @@ local function MissionUpdateCounters()
 	end
 end
 
+local function MissionCompleteSuccessChance(self)
+	local frame = self.MissionComplete
+	local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
+	if not chance then
+		-- API forgets about failed missions, parse chance text
+		chance = tonumber(frame.ChanceFrame.ChanceText:GetText():match('(%d+)%%') or '')
+	end
+	if chance and chance < 100 then
+		local resultText
+		if frame.currentMission.succeeded then
+			resultText = _G.GARRISON_MISSION_SUCCESS
+			frame.ChanceFrame.ResultText:SetTextColor(0.1, 1, 0.1)
+		else
+			resultText = _G.GARRISON_MISSION_FAILED
+			frame.ChanceFrame.ResultText:SetTextColor(1, 0.1, 0.1)
+		end
+		frame.ChanceFrame.ResultText:SetFormattedText('%1$s (%2$d%%)', resultText, chance)
+	end
+end
+
 local function MissionCompleteSkipAnimations(self, key)
 	-- other key options: (L|R)ALT, ENTER, ESCAPE, ...
 	if key == 'LSHIFT' or key == 'RSHIFT' then
@@ -917,22 +937,6 @@ local function MissionCompleteSkipAnimations(self, key)
 				self:BeginAnims(self:FindAnimIndexFor(self.AnimRewards) - 1)
 			end
 		end
-	end
-end
-
-local function MissionCompleteSuccessChance(self)
-	local frame = self.MissionComplete
-	local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
-	if chance and chance < 100 then
-		local result
-		if frame.currentMission.succeeded then
-			result = _G.GARRISON_MISSION_SUCCESS
-			frame.ChanceFrame.ResultText:SetTextColor(0.1, 1, 0.1)
-		else
-			result = _G.GARRISON_MISSION_FAILED
-			frame.ChanceFrame.ResultText:SetTextColor(1, 0.1, 0.1)
-		end
-		frame.ChanceFrame.ResultText:SetFormattedText('%1$s (%2$d%%)', result, chance)
 	end
 end
 
@@ -1093,6 +1097,11 @@ function addon:ADDON_LOADED(event, arg1)
 			hooksecurefunc(frame.MissionComplete.ChanceFrame.ResultAnim, 'Play', function(self)
 				MissionCompleteSuccessChance(frame)
 			end)
+			-- add skip animations instructions
+			local _, Title, Summary, info = frame.MissionTab.MissionList.CompleteDialog.BorderFrame.Model:GetRegions()
+			if info and info:GetObjectType() == 'FontString' and info:GetText() == _G.GARRISON_SKIP_ANIMATION_LABEL then
+				info:SetFormattedText(addon.L['skipAnimationInstructions'], _G.SHIFT_KEY, _G.KEY_SPACE)
+			end
 		end
 	end
 

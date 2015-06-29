@@ -388,16 +388,19 @@ local function UpdateMissionList()
 
 		-- show required abilities
 		local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
-		local counterableThreats = GarrisonMission_DetermineCounterableThreats(mission.missionID, mission.followerTypeID)
+		local iLevelReq  = (levelReq == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel or 0) - 14
+		local  levelReq  = mission.level - 2
 		local numThreats = 0
+
 		for j = 1, #enemies do
 			if not addon.db.showMissionThreats then break end
 			button.Threats = button.Threats or {}
+
 			for mechanicID, mechanic in pairs(enemies[j].mechanics) do
 				numThreats = numThreats + 1
 				local threatFrame = button.Threats[numThreats]
 				if not threatFrame then
-					button.Threats[numThreats] = CreateFrame('Frame', nil, button, 'GarrisonAbilityCounterWithCheckTemplate')
+					button.Threats[numThreats] = CreateFrame('Frame', nil, button, 'GarrisonAbilityCounterTemplate') -- GarrisonAbilityCounterWithCheckTemplate
 					threatFrame = button.Threats[numThreats]
 					if numThreats == 1 then
 						threatFrame:SetPoint('TOPLEFT', button.Title, 'BOTTOMLEFT', 0, -2)
@@ -406,20 +409,33 @@ local function UpdateMissionList()
 					end
 					threatFrame.Border:SetAtlas('GarrMission_EncounterAbilityBorder')
 				end
-				-- update threat counters
-				GarrisonMissionButton_CheckTooltipThreat(threatFrame, mission.missionID, mechanicID, counterableThreats)
-				threatFrame.TimeLeft:Hide()
+				threatFrame.id = mechanicID
+				threatFrame.info = mechanic
 				threatFrame.Icon:SetTexture(mechanic.icon)
 				threatFrame:Show()
-				if not threatFrame.Check:IsShown() and addon.db.desaturateUnavailable then
-					threatFrame.Icon:SetDesaturated(true)
-					threatFrame.Icon:SetAlpha(0.5)
+
+				-- also see GarrisonMissionButton_CheckTooltipThreat
+				if not active and addon.db.desaturateUnavailable then
+					local numCounters = 0
+					for _, followerID in ipairs(abilities[mechanicID] or emptyTable) do
+						if C_Garrison.GetFollowerLevel(followerID) >= levelReq
+							and C_Garrison.GetFollowerItemLevelAverage(followerID) >= iLevelReq
+							and not C_Garrison.GetFollowerStatus(followerID) then
+							-- must have high level, high gear and be available
+							numCounters = numCounters + 1
+						end
+					end
+					-- might have used up followers for previous counters
+					for prevThreatIndex = 1, numThreats - 1 do
+						if button.Threats[prevThreatIndex].id == mechanicID then
+							numCounters = numCounters - 1
+						end
+					end
+					threatFrame.Icon:SetDesaturated(numCounters < 1)
+					threatFrame.Icon:SetAlpha(numCounters < 1 and 0.5 or 1)
 				else
 					threatFrame.Icon:SetDesaturated(false)
 					threatFrame.Icon:SetAlpha(1)
-					if addon.db.desaturateUnavailable then
-						threatFrame.Check:Hide()
-					end
 				end
 			end
 		end

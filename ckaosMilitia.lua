@@ -454,6 +454,51 @@ local function UpdateMissionList()
 	end
 end
 
+local function UpdateShipyardMissionList()
+	local self = GarrisonShipyardFrame.MissionTab.MissionList
+	local missions = self.missions
+	for i, mission in pairs(self.missions) do
+		local missionFrame = self.missionFrames[i]
+		local index = 0
+		if mission.canStart and not mission.inProgress then
+			local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
+			local counterableThreats = GarrisonMission_DetermineCounterableThreats(mission.missionID, mission.followerTypeID)
+			missionFrame.Threats = missionFrame.Threats or {}
+
+			for j = 1, #enemies do
+				for mechanicID, mechanic in pairs(enemies[j].mechanics) do
+					index = index + 1
+					local threatFrame = missionFrame.Threats[index]
+					if not threatFrame then
+						missionFrame.Threats[index] = CreateFrame('Frame', nil, missionFrame, 'GarrisonAbilityCounterWithCheckTemplate')
+						missionFrame.Threats[index]:SetPoint('LEFT', missionFrame.Threats[index - 1], 'RIGHT', 4, 0)
+						threatFrame = missionFrame.Threats[index]
+					end
+					-- update threat counters
+					if mission.followerTypeID == LE_FOLLOWER_TYPE_SHIPYARD_6_2
+						and mechanic.factor <= GARRISON_HIGH_THREAT_VALUE then
+						threatFrame.Border:SetAtlas('GarrMission_WeakEncounterAbilityBorder')
+					else
+						threatFrame.Border:SetAtlas('GarrMission_EncounterAbilityBorder')
+					end
+					GarrisonMissionButton_CheckTooltipThreat(threatFrame, mission.missionID, mechanicID, counterableThreats)
+					threatFrame.TimeLeft:Hide()
+					threatFrame.Icon:SetTexture(mechanic.icon)
+					threatFrame:Show()
+				end
+			end
+			if index > 0 then
+				missionFrame.Threats[1]:ClearAllPoints()
+				missionFrame.Threats[1]:SetPoint('TOP', missionFrame, 'BOTTOM', 10-4 -index*20/2, 10)
+			end
+		end
+		-- hide unused threat icons
+		for i = index + 1, #(missionFrame.Threats or emptyTable) do
+			missionFrame.Threats[i]:Hide()
+		end
+	end
+end
+
 local function OnRewardClick(self, btn, up)
 	HandleModifiedItemClick(self.link)
 end
@@ -526,7 +571,9 @@ local function MissionCompleteFollowerOnEnter(self)
 	local frame = self:GetParent():GetParent():GetParent():GetParent()
 
 	local followerID = self.followerID
-	local garrFollowerID = C_Garrison.GetFollowerLink(followerID):match('garrfollower:(%d+)') * 1
+	local link = C_Garrison.GetFollowerLink(followerID)
+	if not link then return end
+	local garrFollowerID = link:match('garrfollower:(%d+)') * 1
 	local followerType = C_Garrison.GetFollowerTypeByID(garrFollowerID)
 
 	local tooltip, xpWidth = GarrisonFollowerTooltip, nil
@@ -893,6 +940,16 @@ function addon:GARRISON_FOLLOWER_UPGRADED(event, followerID)
 	UpdateThreatCounters()
 end
 
+function addon:GARRISON_MISSION_COMPLETE_RESPONSE(event, missionID, canComplete, success, followers)
+	if success or not followers or #followers < 1 then return end
+	for index, follower in pairs(followers) do
+		if follower.state == 2 then
+			-- ship was destroyed
+			ScanFollowerAbilities(follower.followerID)
+		end
+	end
+end
+
 function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerID, xpGain, oldXP, oldLevel, oldQuality)
 	local _, _, level, quality, currXP, maxXP = C_Garrison.GetFollowerMissionCompleteInfo(followerID)
 	if quality > oldQuality and quality == _G.LE_ITEM_QUALITY_EPIC then
@@ -948,9 +1005,11 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_ADDED')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_UPGRADED')
+	addon.frame:RegisterEvent('GARRISON_MISSION_COMPLETE_RESPONSE')
 
 	-- setup hooks
 	hooksecurefunc('GarrisonMissionPage_SetCounters', MissionUpdateCounters)
+	hooksecurefunc('GarrisonShipyardMap_UpdateMissions', UpdateShipyardMissionList)
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)

@@ -348,7 +348,6 @@ local function UpdateMissionList()
 		local mission = missions[i + offset]
 		if not mission or not button:IsShown() then break end
 
-		if not button.threats then button.threats = {} end
 		if active then
 			-- show success chance
 			local success = C_Garrison.GetRewardChance(mission.missionID)
@@ -376,80 +375,64 @@ local function UpdateMissionList()
 			button.ItemLevel:Hide()
 		end
 
-		local  levelReq = mission.level - 2
-		local iLevelReq = (levelReq == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel or 0) - 14
-
-		-- show required abilities
-		local _, _, env, envDesc, envIcon, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
-		local numThreats = 1
-		for j = 1, #enemies do
-			if not addon.db.showMissionThreats then break end
-			for threatID, threat in pairs(enemies[j].mechanics) do
-				local threatButton = button.threats[numThreats]
-				if not threatButton then
-					-- GarrisonAbilityCounterWithCheckTemplate, GarrisonAbilityCounterTemplate
-					threatButton = CreateFrame('Frame', nil, button, 'GarrisonMissionMechanicTemplate', numThreats)
-					if numThreats == 1 then
-						threatButton:SetPoint('TOPLEFT', button.Title, 'BOTTOMLEFT', 0, -2)
-					else
-						threatButton:SetPoint('LEFT', button.threats[numThreats-1], 'RIGHT', 8, 0)
-					end
-					button.threats[numThreats] = threatButton
-				end
-				threatButton.id = threatID
-				threatButton.info = threat
-				threatButton.Icon:SetTexture(threat.icon)
-				threatButton:Show()
-
-				-- desaturate threats we cannot counter
-				if not active and addon.db.desaturateUnavailable then
-					local numCounters = 0
-					for _, followerID in ipairs(abilities[threatID] or emptyTable) do
-						if C_Garrison.GetFollowerLevel(followerID) >= levelReq
-							and C_Garrison.GetFollowerItemLevelAverage(followerID) >= iLevelReq
-							and not C_Garrison.GetFollowerStatus(followerID) then
-							-- must have high level, high gear and be available
-							numCounters = numCounters + 1
-						end
-					end
-					-- might have used up followers for previous counters
-					for prevThreatIndex = 1, numThreats - 1 do
-						if button.threats[prevThreatIndex].id == threatID then
-							numCounters = numCounters - 1
-						end
-					end
-					threatButton.Icon:SetDesaturated(numCounters < 1)
-					threatButton.Icon:SetAlpha(numCounters < 1 and 0.5 or 1)
-				else
-					threatButton.Icon:SetDesaturated(false)
-					threatButton.Icon:SetAlpha(1)
-				end
-
-				numThreats = numThreats + 1
-			end
-		end
-		-- move title text
-		if numThreats > 1 then
-			local anchorFrom, relativeTo, anchorTo, xOffset, yOffset = button.Title:GetPoint()
-			if yOffset == 0 then
-				button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
-			end
-		end
-		-- hide unused threat buttons
-		while button.threats[numThreats] do
-			button.threats[numThreats]:Hide()
-			numThreats = numThreats + 1
-		end
-
+		-- show resource cost
 		if not active and addon.db.showRequiredResources and (mission.cost or 0) > 0 then
 			local duration = mission.duration
-			-- TODO: add more steps to colorize by duration
 			if mission.durationSeconds >= _G.GARRISON_LONG_MISSION_TIME then
 				duration = _G.GARRISON_LONG_MISSION_TIME_FORMAT:format(mission.duration)
 			end
 			button.Summary:SetDrawLayer('OVERLAY') -- fix our icon layer
 			button.Summary:SetFormattedText('(%2$s, %3$s%1$s|r |TInterface\\Icons\\inv_garrison_resource:0:0:0:0|t)',
 				mission.cost or 0, duration, (mission.cost or 0) > numRessources and _G.RED_FONT_COLOR_CODE or '')
+		end
+
+		-- show required abilities
+		local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
+		local counterableThreats = GarrisonMission_DetermineCounterableThreats(mission.missionID, mission.followerTypeID)
+		local numThreats = 0
+		for j = 1, #enemies do
+			if not addon.db.showMissionThreats then break end
+			button.Threats = button.Threats or {}
+			for mechanicID, mechanic in pairs(enemies[j].mechanics) do
+				numThreats = numThreats + 1
+				local threatFrame = button.Threats[numThreats]
+				if not threatFrame then
+					button.Threats[numThreats] = CreateFrame('Frame', nil, button, 'GarrisonAbilityCounterWithCheckTemplate')
+					threatFrame = button.Threats[numThreats]
+					if numThreats == 1 then
+						threatFrame:SetPoint('TOPLEFT', button.Title, 'BOTTOMLEFT', 0, -2)
+					else
+						threatFrame:SetPoint('LEFT', button.Threats[numThreats-1], 'RIGHT', 8, 0)
+					end
+					threatFrame.Border:SetAtlas('GarrMission_EncounterAbilityBorder')
+				end
+				-- update threat counters
+				GarrisonMissionButton_CheckTooltipThreat(threatFrame, mission.missionID, mechanicID, counterableThreats)
+				threatFrame.TimeLeft:Hide()
+				threatFrame.Icon:SetTexture(mechanic.icon)
+				threatFrame:Show()
+				if not threatFrame.Check:IsShown() and addon.db.desaturateUnavailable then
+					threatFrame.Icon:SetDesaturated(true)
+					threatFrame.Icon:SetAlpha(0.5)
+				else
+					threatFrame.Icon:SetDesaturated(false)
+					threatFrame.Icon:SetAlpha(1)
+					if addon.db.desaturateUnavailable then
+						threatFrame.Check:Hide()
+					end
+				end
+			end
+		end
+		-- hide unused threat icons
+		for k = numThreats + 1, #(button.Threats or emptyTable) do
+			button.Threats[k]:Hide()
+		end
+		-- move title text
+		if numThreats > 0 then
+			local anchorFrom, relativeTo, anchorTo, xOffset, yOffset = button.Title:GetPoint()
+			if yOffset == 0 then
+				button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
+			end
 		end
 	end
 end
@@ -493,8 +476,8 @@ local function UpdateShipyardMissionList()
 			end
 		end
 		-- hide unused threat icons
-		for i = index + 1, #(missionFrame.Threats or emptyTable) do
-			missionFrame.Threats[i]:Hide()
+		for k = index + 1, #(missionFrame.Threats or emptyTable) do
+			missionFrame.Threats[k]:Hide()
 		end
 	end
 end

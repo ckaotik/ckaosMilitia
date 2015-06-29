@@ -10,11 +10,11 @@ _G[addonName] = addon
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
 local floor = math.floor
 local emptyTable = {}
-local threatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_GARRISON_6_0) -- LE_FOLLOWER_TYPE_SHIPYARD_6_2
+local threatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_GARRISON_6_0)
+local shipyardThreatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_SHIPYARD_6_2)
 local THREATS = {}
-for _, threat in ipairs(threatList) do
-	THREATS[threat.id] = threat
-end
+for _, threat in pairs(threatList) do THREATS[threat.id] = threat end
+for _, threat in pairs(shipyardThreatList) do THREATS[threat.id] = threat end
 
 addon.frame = CreateFrame('Frame')
 addon.frame:SetScript('OnEvent', function(self, event, ...)
@@ -35,7 +35,6 @@ addon.defaults = {
 	doubleClickToAddFollower = true,
 	replaceAbilityWithThreat = true,
 	missionCompleteFollowerTooltips = true,
-	showTabs = true,
 	showMissionPageThreats = true,
 	excludeWorkingFromTotals = false,
 	showLowLevelCounters = false,
@@ -133,6 +132,21 @@ local function FollowerAbilityOptions(self, followerID)
 	end
 end
 
+local function ShowFollowerAbilityOptions()
+	UpdateThreatCounters(GarrisonRecruitSelectFrame)
+	for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do
+		local frame = GarrisonRecruitSelectFrame.FollowerSelection['Recruit'..i]
+		FollowerAbilityOptions(frame, follower.followerID)
+		if addon.db.replaceAbilityWithThreat then
+			for k, abilityFrame in ipairs(frame.Abilities.Entries) do
+				if not abilityFrame:IsShown() then break end
+				local _, _, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityFrame.abilityID)
+				abilityFrame.Icon:SetTexture(icon)
+			end
+		end
+	end
+end
+
 local propertyOrder = {'GetFollowerItemLevelAverage', 'GetFollowerLevel', 'GetFollowerQuality', 'GetFollowerName'}
 local function SortFollowers(followerA, followerB)
 	for _, property in ipairs(propertyOrder) do
@@ -217,14 +231,65 @@ local function ScanFollowerAbilities(followerID)
 	end
 end
 
-local function GetMissionTimeLeft(followerID)
-	for index, mission in ipairs(GarrisonMissionFrame.MissionTab.MissionList.inProgressMissions) do
-		for _, missionFollowerID in ipairs(mission.followers) do
-			if missionFollowerID == followerID then
-				return mission.timeLeft
+local function GetFollowerLevelText(followerID)
+	local level   = C_Garrison.GetFollowerLevel(followerID)
+	local iLevel  = C_Garrison.GetFollowerItemLevelAverage(followerID)
+	local quality = C_Garrison.GetFollowerQuality(followerID)
+
+	local qualityColor = RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[quality])
+	local displayLevel
+	if level < 100 then
+		-- display invisible zero to keep padding intact
+		displayLevel = '|c000000000|r'..qualityColor..level..'|r '
+	else
+		displayLevel = qualityColor .. iLevel .. '|r '
+	end
+	return displayLevel
+end
+
+local function MissionOnEnter(self, button)
+	local info = self.info
+	if not self.info and GarrisonLandingPageReport:IsShown() and GarrisonLandingPageReport.selectedTab == GarrisonLandingPageReport.Available then
+		info = (GarrisonLandingPageReport.List.AvailableItems or emptyTable)[self.id]
+	end
+	if not info or info.isRare or info.inProgress then
+		return
+	end
+
+	-- display mission expiry
+	GameTooltip:AddLine(_G.GARRISON_MISSION_AVAILABILITY)
+	GameTooltip:AddLine(info.offerTimeRemaining, 1, 1, 1)
+	GameTooltip:Show()
+end
+
+local function ThreatOnEnter(self)
+	local followers = self.id and abilities[self.id]
+	if not followers or #followers < 1 then return end
+
+	if self.description then
+		GameTooltip:AddLine(self.description, 255, 255, 255, true)
+		GameTooltip:AddLine(' ')
+	end
+
+	tsort(followers, SortFollowers)
+	for _, followerID in pairs(followers) do
+		local name   = C_Garrison.GetFollowerName(followerID)
+		local status = C_Garrison.GetFollowerStatus(followerID) or ''
+		local displayLevel = GetFollowerLevelText(followerID)
+
+		local color = _G.YELLOW_FONT_COLOR
+		if status == _G.GARRISON_FOLLOWER_INACTIVE then
+			color = _G.GRAY_FONT_COLOR
+			name  = _G.GRAY_FONT_COLOR_CODE .. name .. '|r'
+		elseif status == _G.GARRISON_FOLLOWER_ON_MISSION then
+			color = _G.RED_FONT_COLOR
+			if addon.db.showFollowerReturnTime then
+				status = C_Garrison.GetFollowerMissionTimeLeft(followerID)
 			end
 		end
+		GameTooltip:AddDoubleLine(displayLevel..name, status, nil, nil, nil, color.r, color.g, color.b)
 	end
+	GameTooltip:Show()
 end
 
 local function GetNumFollowersForMechanic(threatID)
@@ -247,151 +312,20 @@ local function GetNumFollowersForMechanic(threatID)
 	return numFollowers, numAvailable
 end
 
-local function MissionOnEnter(self, button)
-	local info = self.info
-	if not self.info and GarrisonLandingPageReport:IsShown() and GarrisonLandingPageReport.selectedTab == GarrisonLandingPageReport.Available then
-		info = (GarrisonLandingPageReport.List.AvailableItems or emptyTable)[self.id]
-	end
-	if not info or info.isRare or info.inProgress then
-		return
-	end
-
-	-- display mission expiry
-	GameTooltip:AddLine(_G.GARRISON_MISSION_AVAILABILITY)
-	GameTooltip:AddLine(info.offerTimeRemaining, 1, 1, 1)
-	GameTooltip:Show()
-end
-
-local function GetFollowerLevelText(followerID)
-	local level   = C_Garrison.GetFollowerLevel(followerID)
-	local iLevel  = C_Garrison.GetFollowerItemLevelAverage(followerID)
-	local quality = C_Garrison.GetFollowerQuality(followerID)
-
-	local qualityColor = RGBTableToColorCode(_G.ITEM_QUALITY_COLORS[quality])
-	local displayLevel
-	if level < 100 then
-		-- display invisible zero to keep padding intact
-		displayLevel = '|c000000000|r'..qualityColor..level..'|r '
-	else
-		displayLevel = qualityColor .. iLevel .. '|r '
-	end
-	return displayLevel
-end
-
-local function ThreatOnEnter(self)
-	local followers = self.id and abilities[self.id]
-	if not followers or #followers < 1 then return end
-
-	if self.description then
-		GameTooltip:AddLine(self.description, 255, 255, 255, true)
-		GameTooltip:AddLine(' ')
-	end
-
-	tsort(followers, SortFollowers)
-	for _, followerID in pairs(followers) do
-		local status  = C_Garrison.GetFollowerStatus(followerID) or ''
-		local name    = C_Garrison.GetFollowerName(followerID)
-		local displayLevel = GetFollowerLevelText(followerID)
-
-		local color = _G.YELLOW_FONT_COLOR
-		if status == _G.GARRISON_FOLLOWER_INACTIVE then
-			color = _G.GRAY_FONT_COLOR
-			name  = _G.GRAY_FONT_COLOR_CODE .. name .. '|r'
-		elseif status == _G.GARRISON_FOLLOWER_ON_MISSION then
-			color = _G.RED_FONT_COLOR
-			if addon.db.showFollowerReturnTime then
-				-- follower will return from her mission
-				status = GetMissionTimeLeft(followerID)
-			end
-		end
-		GameTooltip:AddDoubleLine(displayLevel..name, status, nil, nil, nil, color.r, color.g, color.b)
-	end
-	GameTooltip:Show()
-end
-
-local function ThreatOnClick(self, btn, up)
-	self:SetChecked(false)
-	local list = self:GetParent().FollowerList
-	if not list or not list:IsShown() or not list.SearchBox then return end
-	local text = btn == 'LeftButton' and (THREATS[self.id].name) or ''
-	list.SearchBox:SetText(text)
-	GarrisonFollowerList_UpdateFollowers(list)
-end
-
-local function GetTab(index, info)
-	local tab = addon[index]
-	if not tab then
-		tab = CreateFrame('CheckButton', nil, nil, 'SpellBookSkillLineTabTemplate', index)
-		tab:HookScript('OnEnter', ThreatOnEnter)
-		tab:SetScript('OnClick', ThreatOnClick)
-		tab:RegisterForClicks('LeftButtonUp', 'RightButtonUp')
-		addon[index] = tab
-
-		local count = tab:CreateFontString(nil, nil, 'NumberFontNormalSmall')
-		      count:SetAllPoints()
-		      count:SetJustifyH('RIGHT')
-		      count:SetJustifyV('BOTTOM')
-		tab.count = count
-
-		tab.id = info.id
-		tab.name = info.name
-		tab.tooltip = ('|T%1$s:0|t %2$s'):format(info.icon, info.name)
-		tab:SetNormalTexture(info.icon)
-	end
-	return tab
-end
-
-local function HideThreatCounterTabs()
-	for index, tab in ipairs(addon) do
-		tab:SetParent(nil)
-		tab:Hide()
-	end
-end
-
-local function UpdateThreatCounterTabs(parent)
-	for index, info in ipairs(threatList) do
-		local tab = GetTab(index, info)
-		if parent and tab:GetParent() ~= parent then
-			tab:SetParent(parent)
-			tab:ClearAllPoints()
-			tab:SetPoint('TOPLEFT', parent, 'TOPRIGHT', parent == GarrisonLandingPage and -10 or 0, 16 - 44*index)
-		end
-
-		local numFollowers, numAvailable = GetNumFollowersForMechanic(info.id)
-		if numFollowers > 0 then
-			tab.count:SetText(numAvailable ~= numFollowers and ('%d/%d'):format(numAvailable, numFollowers) or numFollowers)
-		else
-			tab.count:SetText()
-		end
-		tab:GetNormalTexture():SetDesaturated(numFollowers < 1 and addon.db.desaturateUnavailable)
-		tab:Show()
-	end
-end
-
 local function UpdateThreatCounterButtons(self)
-	for index, button in pairs(GarrisonThreatCountersFrame.ThreatsList) do
+	for index, button in pairs(self.ThreatsList) do
 		local numFollowers, numAvailable = GetNumFollowersForMechanic(button.id)
-		button.Count:SetText(numAvailable ~= numFollowers and ('%d/%d'):format(numAvailable, numFollowers) or numFollowers)
+		if numAvailable ~= numFollowers then
+			button.Count:SetFormattedText('%d/%d', numAvailable, numFollowers)
+		end
 		button.Icon:SetDesaturated(numFollowers < 1 and addon.db.desaturateUnavailable)
 	end
 end
 
-local frames = {GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonLandingPage, GarrisonRecruitSelectFrame}
 local function UpdateThreatCounters(self)
-	if addon.db.showMissionPageThreats and (GarrisonMissionFrame:IsShown() or GarrisonLandingPage:IsShown()) then
-		UpdateThreatCounterButtons(self)
-		if addon.db.showTabs then
-			HideThreatCounterTabs()
-		end
-	elseif addon.db.showTabs then
-		-- don't update for invisible frames (prevents flickering/reparenting)
-		for _, frame in pairs(frames) do
-			if frame:IsShown() and (not self or frame == self) then
-				UpdateThreatCounterTabs(frame)
-			end
-		end
-	else
-		HideThreatCounterTabs()
+	if addon.db.showMissionPageThreats
+		and (GarrisonMissionFrame:IsShown() or GarrisonLandingPage.FollowerList:IsShown()) then
+		UpdateThreatCounterButtons(GarrisonThreatCountersFrame)
 	end
 end
 
@@ -754,14 +688,6 @@ local function FollowerOnDoubleClick(self, btn)
 end
 
 local MISSION_PAGE_FRAME = GarrisonMissionFrame.MissionTab.MissionPage
-local infoDummy = {
-	coounterName = _G.UNKNOWN,
-	counterIcon = 'Interface\\Icons\\Inv_misc_questionmark',
-	showCounters = false,
-	name = '',
-	icon = '',
-	factor = 300,
-}
 local function UpdateFollowerCounters(frame, button, follower, showCounters, lastUpdate)
 	if (not showCounters and not addon.db.showListCounters)
 		or (showCounters and not addon.db.showLowLevelCounters)
@@ -786,10 +712,7 @@ local function UpdateFollowerCounters(frame, button, follower, showCounters, las
 		if numShown >= 4 then break end
 		if not threats or threats[threatID] then
 			numShown = numShown + 1
-			local info = infoDummy
-			      info.name = THREATS[threatID].name
-			      info.icon = THREATS[threatID].icon
-			GarrisonFollowerButton_SetCounterButton(button, follower.followerID, numShown, info, nil, follower.followerTypeID)
+			GarrisonFollowerButton_SetCounterButton(button, follower.followerID, numShown, THREATS[threatID], nil, follower.followerTypeID)
 			button.Counters[numShown].info.showCounters = false
 		end
 	end
@@ -948,7 +871,7 @@ function addon:GARRISON_MISSION_NPC_OPENED()
 	UpdateThreatCounters(GarrisonMissionFrame)
 end
 function addon:GARRISON_SHIPYARD_NPC_OPENED()
-	UpdateThreatCounters(GarrisonShipyardFrame)
+	-- UpdateThreatCounters(GarrisonShipyardFrame)
 end
 function addon:GARRISON_RECRUITMENT_NPC_OPENED()
 	UpdateThreatCounters(GarrisonRecruiterFrame)
@@ -975,10 +898,6 @@ function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerID, xpGain, oldXP, ol
 	if quality > oldQuality and quality == _G.LE_ITEM_QUALITY_EPIC then
 		-- new ability at epic quality
 		ScanFollowerAbilities(followerID)
-	end
-	if addon.db.showTabs then
-		-- follower returned from mission, triggers for every mission follower, base + bonus xp, even at max
-		UpdateThreatCounters(GarrisonMissionFrame)
 	end
 end
 
@@ -1038,20 +957,7 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonFollowerButton_AddAbility', FollowerListReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
-	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', function()
-		UpdateThreatCounters(GarrisonRecruitSelectFrame)
-		for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do
-			local frame = GarrisonRecruitSelectFrame.FollowerSelection['Recruit'..i]
-			FollowerAbilityOptions(frame, follower.followerID)
-			if addon.db.replaceAbilityWithThreat then
-				for k, abilityFrame in ipairs(frame.Abilities.Entries) do
-					if not abilityFrame:IsShown() then break end
-					local _, _, icon = C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityFrame.abilityID)
-					abilityFrame.Icon:SetTexture(icon)
-				end
-			end
-		end
-	end)
+	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', ShowFollowerAbilityOptions)
 
 	-- skip battle animations on finished missions
 	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', MissionCompleteSkipAnimations)
@@ -1121,7 +1027,7 @@ function addon:ADDON_LOADED(event, arg1)
 		GarrisonLandingPage:CreateTitleRegion():SetAllPoints(GarrisonLandingPage)
 	end
 
-	-- show followers info on mission page
+	-- show follower counter info on mission page
 	if addon.db.showMissionPageThreats then
 		local page = GarrisonMissionFrame.MissionTab.MissionPage
 		page:SetPoint('TOPRIGHT', '$parent', 'TOPRIGHT', -55, -34-30)
@@ -1143,14 +1049,41 @@ function addon:ADDON_LOADED(event, arg1)
 		end)
 	end
 
-	-- extend Blizzard's threat counters list
-	for index, button in ipairs(GarrisonThreatCountersFrame.ThreatsList) do
-		button:HookScript('OnEnter', ThreatOnEnter)
+	-- add threat counters list to recruiter frames
+	local frame = GarrisonRecruiterFrame
+	frame.ThreatCountersFrame = CreateFrame('Frame', nil, frame, 'GarrisonThreatCountersFrameTemplate')
+	frame.ThreatCountersFrame:SetPoint('TOPRIGHT', -42, -60)
+	frame.ThreatCountersFrame:Show()
+	for i, threatButton in pairs(frame.ThreatCountersFrame.ThreatsList) do
+		if i >= 2 then
+			local point, anchor, otherPoint, x, y = threatButton:GetPoint()
+			threatButton:SetPoint(point, anchor, otherPoint, x+5, y)
+		end
 	end
-	GarrisonThreatCountersFrame:HookScript('OnShow', UpdateThreatCounterButtons)
 
-	addon:GARRISON_UPGRADEABLE_RESULT('GARRISON_UPGRADEABLE_RESULT')
+	local frame = GarrisonRecruitSelectFrame
+	frame.ThreatCountersFrame = CreateFrame('Frame', nil, frame, 'GarrisonThreatCountersFrameTemplate')
+	frame.ThreatCountersFrame:SetPoint('TOPRIGHT', frame.FollowerSelection, 'TOPRIGHT', -12, 30)
+	frame.ThreatCountersFrame:Show()
+	frame.FollowerSelection.ChooseFollower:SetJustifyH('LEFT')
+
+	-- extend Blizzard's threat counters list
+	local frames = {
+		GarrisonThreatCountersFrame,
+		GarrisonRecruiterFrame.ThreatCountersFrame,
+		GarrisonRecruitSelectFrame.ThreatCountersFrame,
+		GarrisonShipyardFrame.FollowerTab.ThreatCountersFrame,
+		GarrisonLandingPage.ShipFollowerTab.ThreatCountersFrame,
+	}
+	for _, frame in pairs(frames) do
+		for index, button in ipairs(frame.ThreatsList) do
+			button:HookScript('OnEnter', ThreatOnEnter)
+		end
+		frame:HookScript('OnShow', UpdateThreatCounterButtons)
+	end
+
 	-- Blizzard_GarrisonUI might have been forcably loaded
+	addon:GARRISON_UPGRADEABLE_RESULT('GARRISON_UPGRADEABLE_RESULT')
 	-- try again when more info is available
 	addon.frame:RegisterEvent('GARRISON_UPGRADEABLE_RESULT')
 

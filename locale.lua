@@ -1,8 +1,6 @@
 local addonName, addon, _ = ...
 
 local L = {
-	showTabs                     = 'Show threat tabs',
-	showTabsDesc                 = 'Display counterable threats as tabs that attach to several garrison frames.|n' .. _G.RED_FONT_COLOR_CODE..'Does not display on frames that also display Blizzard threat buttons.',
 	showMissionPageThreats       = 'Show threat buttons on mission page',
 	showMissionPageThreatsDesc   = 'Display default Blizzard threat counter buttons on mission page.',
 	excludeWorkingFromTotals     = 'Exclude working from tab count',

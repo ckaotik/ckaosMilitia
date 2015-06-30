@@ -1008,7 +1008,6 @@ function addon:ADDON_LOADED(event, arg1)
 
 	-- setup hooks
 	hooksecurefunc('GarrisonMissionPage_SetCounters', MissionUpdateCounters)
-	hooksecurefunc('GarrisonShipyardMap_UpdateMissions', UpdateShipyardMissionList)
 	hooksecurefunc('GarrisonMissionList_Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
@@ -1016,6 +1015,9 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonFollowerTooltipTemplate_SetGarrisonFollower', TooltipReplaceAbilityWithThreat)
 	hooksecurefunc('GarrisonRecruitSelectFrame_UpdateRecruits', ShowFollowerAbilityOptions)
+	-- shipyard missions
+	hooksecurefunc('GarrisonShipyardMap_UpdateMissions', UpdateShipyardMissionList)
+	hooksecurefunc(GarrisonShipyardFrame, 'ClearParty', UpdateShipyardMissionList) -- CloseMission
 
 	-- skip battle animations on finished missions
 	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', MissionCompleteSkipAnimations)

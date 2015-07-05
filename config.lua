@@ -57,35 +57,6 @@ local function OpenConfiguration(self, args)
 			local control = self.controls[setting]
 			control:SetChecked(addon.db[setting])
 			control.text:SetText(addon.L[setting] or setting)
-		elseif type(default) == 'number' then
-			if not self.controls[setting] then
-				local slider = CreateFrame('Slider', '$parentSlider'..setting:gsub("^%l", string.upper), self, 'OptionsSliderTemplate')
-				local name = slider:GetName()
-				slider.textLow  = _G[name..'Low']
-				slider.textHigh = _G[name..'High']
-				slider.text     = _G[name..'Text']
-				slider.setting  = setting
-
-				slider:SetScript('OnValueChanged', OnValueChanged)
-				slider:SetScript('OnEnter', OnEnter)
-				slider:SetScript('OnLeave', GameTooltip_Hide)
-
-				if setting == 'battleAnimDuration' then
-					-- TODO: prepare for other sliders as well
-					slider:SetPoint('TOPLEFT', self.controls.skipBattleAnimation, 'TOPRIGHT', 200, -4)
-					slider:SetValueStep(0.25)
-					slider:SetMinMaxValues(0, 10)
-				end
-
-				slider.minValue, slider.maxValue = slider:GetMinMaxValues()
-				slider.textLow:SetText(slider.minValue)
-				slider.textHigh:SetText(slider.maxValue)
-				self.controls[setting] = slider
-			end
-
-			local control = self.controls[setting]
-			control:SetValue(addon.db[setting])
-			control.text:SetText(addon.L[setting] or setting)
 		end
 	end
 

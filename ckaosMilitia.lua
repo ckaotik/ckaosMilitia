@@ -133,7 +133,7 @@ local function FollowerAbilityOptions(self, followerID)
 end
 
 local function ShowFollowerAbilityOptions()
-	UpdateThreatCounters(GarrisonRecruitSelectFrame)
+	addon.UpdateThreatCounters(GarrisonRecruitSelectFrame)
 	for i, follower in ipairs(C_Garrison.GetAvailableRecruits()) do
 		local frame = GarrisonRecruitSelectFrame.FollowerSelection['Recruit'..i]
 		FollowerAbilityOptions(frame, follower.followerID)
@@ -328,6 +328,7 @@ local function UpdateThreatCounters(self)
 		UpdateThreatCounterButtons(GarrisonThreatCountersFrame)
 	end
 end
+addon.UpdateThreatCounters = UpdateThreatCounters
 
 -- add extra info to mission list for easier overview
 local followerSlotIcon = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0:0:0:0:32:32:4:26:4:26|t'
@@ -460,6 +461,7 @@ local function UpdateShipyardMissionList()
 		local missionFrame = self.missionFrames[i]
 		local index = 0
 		if mission.canStart and not mission.inProgress then
+			-- local _, durationSeconds, _, successChance, partyBuffs, environmentCounter, extraXP, currencyMultipliers, goldMultiplier = C_Garrison.GetPartyMissionInfo(missionID)
 			local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
 			local counterableThreats = GarrisonMission_DetermineCounterableThreats(mission.missionID, mission.followerTypeID)
 			missionFrame.Threats = missionFrame.Threats or {}
@@ -480,6 +482,7 @@ local function UpdateShipyardMissionList()
 					else
 						threatFrame.Border:SetAtlas('GarrMission_EncounterAbilityBorder')
 					end
+					-- GarrisonMission_DetermineCounterableThreats + GarrisonMissionButton_CheckTooltipThreat
 					GarrisonMissionButton_CheckTooltipThreat(threatFrame, mission.missionID, mechanicID, counterableThreats)
 					threatFrame.TimeLeft:Hide()
 					threatFrame.Icon:SetTexture(mechanic.icon)
@@ -733,11 +736,10 @@ local function FollowerOnDoubleClick(self, btn)
 	end
 end
 
-local MISSION_PAGE_FRAME = GarrisonMissionFrame.MissionTab.MissionPage
 local function UpdateFollowerCounters(frame, button, follower, showCounters, lastUpdate)
 	if (not showCounters and not addon.db.showListCounters)
 		or (showCounters and not addon.db.showLowLevelCounters)
-		or not frame:IsShown() then
+		or not button.Counters or not button.Counters[1] or not button.Counters[1].Icon then
 		-- only display on listings and/or low levels on mission grouping
 		return
 	end
@@ -774,6 +776,7 @@ local function UpdateFollowerCounters(frame, button, follower, showCounters, las
 	button.Counters[1]:SetPoint('TOPRIGHT', -8, numShown <= 2 and -16 or -4)
 end
 
+local MISSION_PAGE_FRAME = GarrisonMissionFrame.MissionTab.MissionPage
 local function MissionEnemiesCheckPseudoCounter(counterID)
 	local isThreat = false
 	for i = 1, #MISSION_PAGE_FRAME.Enemies do

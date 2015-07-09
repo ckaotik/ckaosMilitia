@@ -1051,6 +1051,17 @@ function addon:ADDON_LOADED(event, arg1)
 			FollowerAbilityOptions(self:GetParent().FollowerTab, followerID)
 		end)
 
+		if frame.ShipFollowerList then
+			hooksecurefunc(frame.ShipFollowerList, 'UpdateData', function(self)
+				for index, button in pairs(self.listScroll.buttons) do
+					if button.info.status == _G.GARRISON_FOLLOWER_ON_MISSION then
+						-- show return time instead of "on a mission"
+						button.Status:SetText(C_Garrison.GetFollowerMissionTimeLeft(button.info.followerID))
+					end
+				end
+			end)
+		end
+
 		if frame.MissionComplete then
 			-- double click to add follower to mission
 			for index, button in pairs(frame.FollowerList.listScroll.buttons) do

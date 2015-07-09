@@ -36,7 +36,7 @@ local L = {
 	showRequiredResources        = 'Show required resources',
 	showRequiredResourcesDesc    = 'Append the amount of required resources to mission duration texts.',
 	showFollowerReturnTime       = 'Show return time',
-	showFollowerReturnTimeDesc   = 'Display follower return times in threat counter tab tooltips.',
+	showFollowerReturnTimeDesc   = 'Display follower return times in threat counter list tooltips.',
 
 	skipAnimationInstructions    = 'Use %s to skip combat animations|nor %s to skip all animations.',
 }

@@ -1,3 +1,16 @@
+# 6.2v2
+- Completely removed threat counter tabs. Instead we're now always using Blizzard style threat counter buttons.
+- Updated "show low level counters" code for 6.2
+- New: Shipyard: Display threat icons on missions
+- New: Shipyard: Recognize "show mission page threats" setting
+- New: Shipyard: Display cost and duration on shipyard missions. (must enable showRequiredResources setting)
+- New: Shipyard: Show return time instead of "on a mission" on ship follower list
+- New: Shipyard: Added mission expiry information to shipyard mission tooltips
+- Fixed: Error when assigning follower workers to buildings.
+- Fixed: Incorrect tooltips on shipyard counters in follower list.
+- Fixed: Follower item level is disregarded for threat counters.
+- Fixed: Remove follower data when ship gets destroyed.
+
 # 6.2v1
 - Updated for patch 6.2
 - Rewrote animation skipping code. Hold down shift to skip mission complete animations but keep displaying rewards

@@ -212,7 +212,7 @@ local function GetMissionThreats(missionID)
 end
 
 local abilities = {}
-local function ScanFollowerAbilities(followerID)
+local function ScanFollowerAbilities(followerID, removeData)
 	for threatID, followers in pairs(abilities) do
 		for i, follower in pairs(followers) do
 			if follower == followerID then
@@ -221,6 +221,7 @@ local function ScanFollowerAbilities(followerID)
 			end
 		end
 	end
+	if removeData then return end
 	for threatID in pairs(GetFollowerCounters(followerID) or emptyTable) do
 		if not abilities[threatID] then
 			abilities[threatID] = {}
@@ -636,6 +637,7 @@ local function GetRewardText(reward)
 
 	if reward.itemID then
 		rewardTitle, _, quality, _, _, _, _, _, _, icon = GetItemInfo(reward.itemID)
+		icon = icon or reward.icon or '' -- item data might not be available
 	elseif reward.currencyID == 0 then
 		count = BreakUpLargeNumbers(floor(reward.quantity / _G.COPPER_PER_GOLD))
 	elseif reward.followerXP then
@@ -947,7 +949,7 @@ function addon:GARRISON_MISSION_COMPLETE_RESPONSE(event, missionID, canComplete,
 	for index, follower in pairs(followers) do
 		if follower.state == 2 then
 			-- ship was destroyed
-			ScanFollowerAbilities(follower.followerID)
+			ScanFollowerAbilities(follower.followerID, true)
 		end
 	end
 end
@@ -1043,6 +1045,8 @@ function addon:ADDON_LOADED(event, arg1)
 		button:HookScript('OnEnter', MissionOnEnter)
 	end
 
+	-- provide easier code access
+	GarrisonMissionFrame.FollowerTab.ThreatCountersFrame = GarrisonThreatCountersFrame
 	-- for some reason, none of GarrisonFollowerList's hooks works here
 	local frames = {GarrisonMissionFrame, GarrisonShipyardFrame, GarrisonLandingPage}
 	for _, frame in pairs(frames) do
@@ -1072,6 +1076,39 @@ function addon:ADDON_LOADED(event, arg1)
 				info:SetFormattedText(addon.L['skipAnimationInstructions'], _G.SHIFT_KEY, _G.KEY_SPACE)
 			end
 		end
+
+		if frame.MissionTab and frame.MissionTab.MissionPage then
+			-- show follower counter info on mission page
+			if addon.db.showMissionPageThreats then
+				local page = frame.MissionTab.MissionPage
+				page:SetPoint('TOPRIGHT', '$parent', 'TOPRIGHT', -55, -34-30)
+				page:SetHeight(550)
+
+				page:HookScript('OnShow', function(self)
+					frame.FollowerTab.NumFollowers:SetParent(frame.MissionTab)
+					frame.FollowerTab.ThreatCountersFrame:SetParent(frame.MissionTab)
+				end)
+				page:HookScript('OnHide', function(self)
+					frame.FollowerTab.NumFollowers:SetParent(frame.FollowerTab)
+					frame.FollowerTab.ThreatCountersFrame:SetParent(frame.FollowerTab)
+				end)
+			end
+		end
+	end
+
+	if addon.db.showMissionPageThreats then
+		hooksecurefunc(GarrisonMission, 'UpdateMissionData', function(self, missionPage)
+			if self:GetName() == 'GarrisonShipyardFrame' then
+				local point, anchor, relativeTo, x, y = missionPage.Enemy1:GetPoint()
+				missionPage.Enemy1:SetPoint(point, anchor, relativeTo, x, -83 + 20)
+				local point, anchor, relativeTo, x, y = missionPage.Follower1:GetPoint()
+				missionPage.Follower1:SetPoint(point, anchor, relativeTo, x, -206 + 20)
+			else
+				if not missionPage.BuffsFrame or not missionPage.BuffsFrame:IsShown() then return end
+				local anchor, anchorTo, otherAnchor, x, y = missionPage.BuffsFrame:GetPoint()
+				missionPage.BuffsFrame:SetPoint(anchor, anchorTo, otherAnchor, x, 198 - 18)
+			end
+		end)
 	end
 
 	-- show garrison buildings in minimap button tooltip
@@ -1088,28 +1125,6 @@ function addon:ADDON_LOADED(event, arg1)
 		frame:CreateTitleRegion():SetAllPoints(frame.TopBorder)
 		GarrisonLandingPage:SetMovable(true)
 		GarrisonLandingPage:CreateTitleRegion():SetAllPoints(GarrisonLandingPage)
-	end
-
-	-- show follower counter info on mission page
-	if addon.db.showMissionPageThreats then
-		local page = GarrisonMissionFrame.MissionTab.MissionPage
-		page:SetPoint('TOPRIGHT', '$parent', 'TOPRIGHT', -55, -34-30)
-		page:SetHeight(550)
-
-		page:HookScript('OnShow', function(self)
-			GarrisonMissionFrame.FollowerTab.NumFollowers:SetParent(GarrisonMissionFrame.MissionTab)
-			GarrisonThreatCountersFrame:SetParent(GarrisonMissionFrame.MissionTab)
-		end)
-		page:HookScript('OnHide', function(self)
-			GarrisonMissionFrame.FollowerTab.NumFollowers:SetParent(GarrisonMissionFrame.FollowerTab)
-			GarrisonThreatCountersFrame:SetParent(GarrisonMissionFrame.FollowerTab)
-		end)
-		-- fix BuffsFrame overlapping followers
-		hooksecurefunc(GarrisonMission, 'UpdateMissionData', function(self, frame)
-			if not frame.BuffsFrame or not frame.BuffsFrame:IsShown() then return end
-			local anchor, anchorTo, otherAnchor, x, y = frame.BuffsFrame:GetPoint()
-			frame.BuffsFrame:SetPoint(anchor, anchorTo, otherAnchor, x, 198 - 18)
-		end)
 	end
 
 	-- add threat counters list to recruiter frames

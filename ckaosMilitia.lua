@@ -248,14 +248,33 @@ local function GetFollowerLevelText(followerID)
 	return displayLevel
 end
 
+local widgetOrder = {'RewardString', 'BonusReward', 'ItemTooltip', 'Reward', 'BonusTitle', 'BonusEffects'}
+local function ShipyardMissionOnEnter(info, inProgress)
+	local tooltipFrame = GarrisonShipyardMapMissionTooltip
+	if not inProgress and not info.isRare then
+		local beforeWidget = GarrisonMissionListTooltipThreatsFrame:IsShown() and GarrisonMissionListTooltipThreatsFrame or tooltipFrame.MissionDuration
+		GarrisonShipyardMapMission_SetBottomWidget(beforeWidget)
+
+		-- add misison expiry info
+		GarrisonShipyardMapMission_AnchorToBottomWidget(tooltipFrame.MissionExpires, 0, -tooltipFrame.MissionExpires.yspacing)
+		tooltipFrame.MissionExpires:Show()
+		tooltipFrame.TimeRemaining:SetText(info.offerTimeRemaining)
+		tooltipFrame.TimeRemaining:Show()
+		GarrisonShipyardMapMission_SetBottomWidget(tooltipFrame.TimeRemaining)
+
+		-- reorganize follow up data
+		GarrisonShipyardMapMission_AnchorToBottomWidget(tooltipFrame.RewardString, 0, -tooltipFrame.RewardString.yspacing)
+		GarrisonShipyardMapMission_SetBottomWidget(tooltipFrame.RewardString)
+		GarrisonShipyardMapMission_UpdateTooltipSize(tooltipFrame)
+	end
+end
+
 local function MissionOnEnter(self, button)
 	local info = self.info
 	if not self.info and GarrisonLandingPageReport:IsShown() and GarrisonLandingPageReport.selectedTab == GarrisonLandingPageReport.Available then
 		info = (GarrisonLandingPageReport.List.AvailableItems or emptyTable)[self.id]
 	end
-	if not info or info.isRare or info.inProgress then
-		return
-	end
+	if not info or info.isRare or info.inProgress then return end
 
 	-- display mission expiry
 	GameTooltip:AddLine(_G.GARRISON_MISSION_AVAILABILITY)
@@ -462,6 +481,14 @@ local function UpdateShipyardMissionList()
 	for i, mission in pairs(self.missions) do
 		local missionFrame = self.missionFrames[i]
 		local index = 0
+
+		-- hide everything
+		if missionFrame.Cost then missionFrame.Cost:SetText() end
+		for k = index + 1, #(missionFrame.Threats or emptyTable) do
+			missionFrame.Threats[k]:Hide()
+		end
+
+		-- then, display all we need
 		if addon.db.showExtraMissionInfo and mission.canStart and not mission.inProgress then
 			if addon.db.showMissionThreats then
 				local counterableThreats = GarrisonMission_DetermineCounterableThreats(mission.missionID, mission.followerTypeID)
@@ -496,8 +523,8 @@ local function UpdateShipyardMissionList()
 					missionFrame.Threats[1]:SetPoint('TOP', missionFrame, 'BOTTOM', 10-4 -index*20/2, 10)
 				end
 			end
-			-- note: also displays duration time
-			if addon.db.showRequiredResources then
+
+			if addon.db.showRequiredResources then -- also displays duration time
 				local costString = missionFrame.Cost
 				if not costString then
 					costString = missionFrame:CreateFontString(nil, nil, 'NumberFontNormalSmall')
@@ -507,10 +534,6 @@ local function UpdateShipyardMissionList()
 				local _, availableCount, icon = GetCurrencyInfo(missionFrame.info.costCurrencyTypesID)
 				costString:SetFormattedText('%s · %s%s|T%s:0|t', missionFrame.info.duration, availableCount < missionFrame.info.cost and _G.RED_FONT_COLOR_CODE or '', missionFrame.info.cost, icon or '')
 			end
-		end
-		-- hide unused threat icons
-		for k = index + 1, #(missionFrame.Threats or emptyTable) do
-			missionFrame.Threats[k]:Hide()
 		end
 	end
 end
@@ -1032,6 +1055,7 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonFollowerButton_UpdateCounters', UpdateFollowerCounters)
 
 	-- mission tooltips
+	hooksecurefunc('GarrisonShipyardMapMission_SetTooltip', ShipyardMissionOnEnter)
 	hooksecurefunc('GarrisonMissionButton_OnEnter', MissionOnEnter)
 	for _, button in pairs(GarrisonMissionFrame.MissionTab.MissionList.listScroll.buttons) do
 		button:HookScript('OnEnter', MissionOnEnter)

@@ -571,6 +571,20 @@ local function UpdateMissionRewards(self, rewards, numRewards)
 	end
 end
 
+local function UpdateFollowerList(self)
+	for index, button in pairs(self.listScroll.buttons) do
+		if button.info and button.info.status == _G.GARRISON_FOLLOWER_ON_MISSION then
+			-- show return time instead of "on a mission"
+			button.Status:SetText(C_Garrison.GetFollowerMissionTimeLeft(button.info.followerID))
+		end
+	end
+end
+
+local function UpdateDisplayedFollower(self, followerID)
+	-- display learnable counters
+	FollowerAbilityOptions(self:GetParent().FollowerTab, followerID)
+end
+
 -- note: this will only work once Blizzard_GarrisonUI (and therefore this addon) is loaded
 local function ShowMinimapBuildings(self, motion)
 	if not addon.db.showMinimapBuildings then return end
@@ -1070,20 +1084,14 @@ function addon:ADDON_LOADED(event, arg1)
 	-- for some reason, none of GarrisonFollowerList's hooks works here
 	local frames = {GarrisonMissionFrame, GarrisonShipyardFrame, GarrisonLandingPage}
 	for _, frame in pairs(frames) do
-		-- display learnable counters
-		hooksecurefunc(frame.FollowerList, 'ShowFollower', function(self, followerID)
-			FollowerAbilityOptions(self:GetParent().FollowerTab, followerID)
-		end)
 
-		if frame.ShipFollowerList then
-			hooksecurefunc(frame.ShipFollowerList, 'UpdateData', function(self)
-				for index, button in pairs(self.listScroll.buttons) do
-					if button.info and button.info.status == _G.GARRISON_FOLLOWER_ON_MISSION then
-						-- show return time instead of "on a mission"
-						button.Status:SetText(C_Garrison.GetFollowerMissionTimeLeft(button.info.followerID))
-					end
-				end
-			end)
+		if frame.FollowerList then
+			hooksecurefunc(frame.FollowerList, 'UpdateData', UpdateFollowerList)
+			hooksecurefunc(frame.FollowerList, 'ShowFollower', UpdateDisplayedFollower)
+		end
+		if frame.ShipFollowerList then -- only applies to landing page
+			hooksecurefunc(frame.ShipFollowerList, 'UpdateData', UpdateFollowerList)
+			hooksecurefunc(frame.ShipFollowerList, 'ShowFollower', UpdateDisplayedFollower)
 		end
 
 		if frame.MissionComplete then

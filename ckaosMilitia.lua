@@ -463,13 +463,11 @@ local function UpdateShipyardMissionList()
 		local missionFrame = self.missionFrames[i]
 		local index = 0
 		if addon.db.showExtraMissionInfo and mission.canStart and not mission.inProgress then
-			-- local _, durationSeconds, _, successChance, partyBuffs, environmentCounter, extraXP, currencyMultipliers, goldMultiplier = C_Garrison.GetPartyMissionInfo(missionID)
-			local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
-
 			if addon.db.showMissionThreats then
 				local counterableThreats = GarrisonMission_DetermineCounterableThreats(mission.missionID, mission.followerTypeID)
 				missionFrame.Threats = missionFrame.Threats or {}
 
+				local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
 				for j = 1, #enemies do
 					for mechanicID, mechanic in pairs(enemies[j].mechanics) do
 						index = index + 1
@@ -498,11 +496,16 @@ local function UpdateShipyardMissionList()
 					missionFrame.Threats[1]:SetPoint('TOP', missionFrame, 'BOTTOM', 10-4 -index*20/2, 10)
 				end
 			end
+			-- note: also displays duration time
 			if addon.db.showRequiredResources then
-				-- TODO
-			end
-			if addon.db.showFollowerReturnTime then
-				-- TODO
+				local costString = missionFrame.Cost
+				if not costString then
+					costString = missionFrame:CreateFontString(nil, nil, 'NumberFontNormalSmall')
+					costString:SetPoint('BOTTOM', 0, 12)
+					missionFrame.Cost = costString
+				end
+				local _, availableCount, icon = GetCurrencyInfo(missionFrame.info.costCurrencyTypesID)
+				costString:SetFormattedText('%s · %s%s|T%s:0|t', missionFrame.info.duration, availableCount < missionFrame.info.cost and _G.RED_FONT_COLOR_CODE or '', missionFrame.info.cost, icon or '')
 			end
 		end
 		-- hide unused threat icons

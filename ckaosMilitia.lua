@@ -1078,7 +1078,7 @@ function addon:ADDON_LOADED(event, arg1)
 		if frame.ShipFollowerList then
 			hooksecurefunc(frame.ShipFollowerList, 'UpdateData', function(self)
 				for index, button in pairs(self.listScroll.buttons) do
-					if button.info.status == _G.GARRISON_FOLLOWER_ON_MISSION then
+					if button.info and button.info.status == _G.GARRISON_FOLLOWER_ON_MISSION then
 						-- show return time instead of "on a mission"
 						button.Status:SetText(C_Garrison.GetFollowerMissionTimeLeft(button.info.followerID))
 					end

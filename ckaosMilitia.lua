@@ -607,6 +607,18 @@ local function UpdateDisplayedFollower(self, followerID)
 				end
 			end
 		end
+
+		-- display weapon/armor levels
+		if isCollected and C_Garrison.GetFollowerLevel(followerID) == _G.GARRISON_FOLLOWER_MAX_LEVEL then
+			local weaponItemID, weaponItemLevel, armorItemID, armorItemLevel = C_Garrison.GetFollowerItems(followerID)
+			GarrisonFollowerPage_SetItem(followerTab.ItemWeapon, weaponItemID, weaponItemLevel)
+			followerTab.ItemWeapon.ItemLevel:SetText(weaponItemLevel)
+			GarrisonFollowerPage_SetItem(followerTab.ItemArmor, armorItemID, armorItemLevel)
+			followerTab.ItemArmor.ItemLevel:SetText(armorItemLevel)
+		else
+			followerTab.ItemWeapon:Hide()
+			followerTab.ItemArmor:Hide()
+		end
 	end
 end
 
@@ -1104,12 +1116,24 @@ function addon:ADDON_LOADED(event, arg1)
 		button:HookScript('OnEnter', MissionOnEnter)
 	end
 
+	-- nicely display weapon/armor on landing page followers
+	GarrisonLandingPage.FollowerTab.Model.UpgradeFrame:SetPoint('BOTTOM', 0, 30)
+	local weapon = GarrisonLandingPage.FollowerTab.ItemWeapon
+	weapon:ClearAllPoints()
+	weapon:SetPoint('BOTTOMLEFT', GarrisonLandingPage.FollowerTab.Model, 'BOTTOMLEFT', 26, -40)
+	weapon.ItemLevel:ClearAllPoints(); weapon.ItemLevel:SetPoint('BOTTOM', weapon.Icon, 'TOP', 0, 2)
+	weapon.Border:Hide(); weapon:SetWidth(weapon.Icon:GetWidth())
+	local armor = GarrisonLandingPage.FollowerTab.ItemArmor
+	armor:ClearAllPoints()
+	armor:SetPoint('TOPLEFT', weapon.Icon, 'TOPRIGHT', 4, 0)
+	armor.ItemLevel:ClearAllPoints(); armor.ItemLevel:SetPoint('BOTTOM', armor.Icon, 'TOP', 0, 2)
+	armor.Border:Hide(); armor:SetWidth(armor.Icon:GetWidth())
+
 	-- provide easier code access
 	GarrisonMissionFrame.FollowerTab.ThreatCountersFrame = GarrisonThreatCountersFrame
 	-- for some reason, none of GarrisonFollowerList's hooks works here
 	local frames = {GarrisonMissionFrame, GarrisonShipyardFrame, GarrisonLandingPage}
 	for _, frame in pairs(frames) do
-
 		if frame.FollowerList then
 			hooksecurefunc(frame.FollowerList, 'UpdateData', UpdateFollowerList)
 			hooksecurefunc(frame.FollowerList, 'ShowFollower', UpdateDisplayedFollower)

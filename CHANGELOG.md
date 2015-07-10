@@ -1,3 +1,10 @@
+# 6.2v3
+- Fixed lua error when follower list was too short
+- Fixed ship mission return times only showing up on landing page
+- Replaced ability icons on followers displayed on landing page with their countered mechanics
+- Display armor and weapon levels on followers displayed on landing page
+- Unified rendering and logic of threat buttons added to mission lists. When desaturateUnavailable is disabled, checkmarks will be shown similar to the default UI. When fading unavailable counters, additional icons indicating mission or work status will be displayed.
+
 # 6.2v2
 - Completely removed threat counter tabs. Instead we're now always using Blizzard style threat counter buttons.
 - Updated "show low level counters" code for 6.2

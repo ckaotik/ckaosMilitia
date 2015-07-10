@@ -12,7 +12,7 @@ local floor = math.floor
 local emptyTable = {}
 local threatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_GARRISON_6_0)
 local shipyardThreatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_SHIPYARD_6_2)
-local THREATS = {}
+local THREATS, ABILITIES = {}, {}
 for _, threat in pairs(threatList) do THREATS[threat.id] = threat end
 for _, threat in pairs(shipyardThreatList) do THREATS[threat.id] = threat end
 
@@ -211,9 +211,8 @@ local function GetMissionThreats(missionID)
 	return hasThreats and threats or false
 end
 
-local abilities = {}
 local function ScanFollowerAbilities(followerID, removeData)
-	for threatID, followers in pairs(abilities) do
+	for threatID, followers in pairs(ABILITIES) do
 		for i, follower in pairs(followers) do
 			if follower == followerID then
 				tremove(followers, i)
@@ -223,11 +222,11 @@ local function ScanFollowerAbilities(followerID, removeData)
 	end
 	if removeData then return end
 	for threatID in pairs(GetFollowerCounters(followerID) or emptyTable) do
-		if not abilities[threatID] then
-			abilities[threatID] = {}
+		if not ABILITIES[threatID] then
+			ABILITIES[threatID] = {}
 		end
-		if not tContains(abilities[threatID], followerID) then
-			tinsert(abilities[threatID], followerID)
+		if not tContains(ABILITIES[threatID], followerID) then
+			tinsert(ABILITIES[threatID], followerID)
 		end
 	end
 end
@@ -283,7 +282,7 @@ local function MissionOnEnter(self, button)
 end
 
 local function ThreatOnEnter(self)
-	local followers = self.id and abilities[self.id]
+	local followers = self.id and ABILITIES[self.id]
 	if not followers or #followers < 1 then return end
 
 	if self.description then
@@ -313,7 +312,7 @@ local function ThreatOnEnter(self)
 end
 
 local function GetNumFollowersForMechanic(threatID)
-	local followers = abilities[threatID]
+	local followers = ABILITIES[threatID]
 	if not followers then
 		return 0, 0
 	end
@@ -350,6 +349,48 @@ local function UpdateThreatCounters(self)
 	end
 end
 addon.UpdateThreatCounters = UpdateThreatCounters
+
+local counterCounts = {full = {}, partial = {}, away = {}, worker = {}}
+local function DetermineCounterableThreats(missionID, followerType, enemies)
+	-- TODO: we're not properly handling partial counters
+	wipe(counterCounts.full)
+	wipe(counterCounts.worker)
+	for mechanicID, times in pairs(counterCounts.away) do
+		wipe(times)
+	end
+
+	local enemies = enemies or select(8, C_Garrison.GetMissionInfo(missionID))
+	for i = 1, #(enemies or emptyTable) do
+		for mechanicID, mechanic in pairs(enemies[i].mechanics) do
+			for _, followerID in ipairs(ABILITIES[mechanicID] or emptyTable) do
+				if C_Garrison.GetFollowerBiasForMission(missionID, followerID) > -1 then
+					local status = C_Garrison.GetFollowerStatus(followerID)
+					if not status then
+						counterCounts.full[mechanicID] = (counterCounts.full[mechanicID] or 0) + 1
+					elseif status == _G.GARRISON_FOLLOWER_ON_MISSION then
+						if not counterCounts.away[mechanicID] then
+							counterCounts.away[mechanicID] = {}
+						end
+						local returnTime = C_Garrison.GetFollowerMissionTimeLeftSeconds(followerID)
+						table.insert(counterCounts.away[mechanicID], returnTime)
+					elseif status == _G.GARRISON_FOLLOWER_WORKING then
+						counterCounts.worker[mechanicID] = (counterCounts.worker[mechanicID] or 0) + 1
+					end
+				end
+			end
+		end
+	end
+	for i, bonusEffect in pairs(C_Garrison.GetMissionBonusAbilityEffects(missionID) or emptyTable) do
+		local mechanicID = bonusEffect.mechanicTypeID
+		if mechanicID ~= 0 then
+			counterCounts.full[mechanicID] = (counterCounts.full[mechanicID] or 0) + 1
+		end
+	end
+	for counter, times in pairs(counterCounts.away) do
+		table.sort(times)
+	end
+	return counterCounts
+end
 
 -- add extra info to mission list for easier overview
 local followerSlotIcon = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0:0:0:0:32:32:4:26:4:26|t'
@@ -409,11 +450,9 @@ local function UpdateMissionList()
 		end
 
 		-- show required abilities
-		local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
-		local iLevelReq  = (mission.level == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel or 0) - 14
-		local  levelReq  = mission.level - 2
 		local numThreats = 0
-
+		local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
+		local counterCounts = DetermineCounterableThreats(mission.missionID, mission.followerType, enemies)
 		for j = 1, #enemies do
 			if not addon.db.showMissionThreats then break end
 			button.Threats = button.Threats or {}
@@ -422,42 +461,38 @@ local function UpdateMissionList()
 				numThreats = numThreats + 1
 				local threatFrame = button.Threats[numThreats]
 				if not threatFrame then
-					button.Threats[numThreats] = CreateFrame('Frame', nil, button, 'GarrisonAbilityCounterTemplate') -- GarrisonAbilityCounterWithCheckTemplate
-					threatFrame = button.Threats[numThreats]
+					threatFrame = CreateFrame('Frame', nil, button, 'GarrisonAbilityCounterWithCheckTemplate')
 					if numThreats == 1 then
 						threatFrame:SetPoint('TOPLEFT', button.Title, 'BOTTOMLEFT', 0, -2)
 					else
 						threatFrame:SetPoint('LEFT', button.Threats[numThreats-1], 'RIGHT', 8, 0)
 					end
+					button.Threats[numThreats] = threatFrame
+				end
+				-- update threat counters
+				if mission.followerTypeID == LE_FOLLOWER_TYPE_SHIPYARD_6_2
+					and mechanic.factor <= GARRISON_HIGH_THREAT_VALUE then
+					threatFrame.Border:SetAtlas('GarrMission_WeakEncounterAbilityBorder')
+				else
 					threatFrame.Border:SetAtlas('GarrMission_EncounterAbilityBorder')
 				end
+
 				threatFrame.id = mechanicID
 				threatFrame.info = mechanic
 				threatFrame.Icon:SetTexture(mechanic.icon)
+				threatFrame.Icon:SetDesaturated(false)
+				threatFrame.Icon:SetAlpha(1)
 				threatFrame:Show()
 
-				-- also see GarrisonMissionButton_CheckTooltipThreat
-				if not active and addon.db.desaturateUnavailable then
-					local numCounters = 0
-					for _, followerID in ipairs(abilities[mechanicID] or emptyTable) do
-						if C_Garrison.GetFollowerLevel(followerID) >= levelReq
-							and C_Garrison.GetFollowerItemLevelAverage(followerID) >= iLevelReq
-							and not C_Garrison.GetFollowerStatus(followerID) then
-							-- must have high level, high gear and be available
-							numCounters = numCounters + 1
-						end
+				if not active then
+					GarrisonMissionButton_CheckTooltipThreat(threatFrame, mission.missionID, mechanicID, counterCounts)
+					if addon.db.desaturateUnavailable then
+						local canCounter = threatFrame.Check:IsShown()
+						threatFrame.Icon:SetDesaturated(not canCounter)
+						threatFrame.Icon:SetAlpha(canCounter and 1 or 0.5)
+						threatFrame.Check:Hide()
 					end
-					-- might have used up followers for previous counters
-					for prevThreatIndex = 1, numThreats - 1 do
-						if button.Threats[prevThreatIndex].id == mechanicID then
-							numCounters = numCounters - 1
-						end
-					end
-					threatFrame.Icon:SetDesaturated(numCounters < 1)
-					threatFrame.Icon:SetAlpha(numCounters < 1 and 0.5 or 1)
-				else
-					threatFrame.Icon:SetDesaturated(false)
-					threatFrame.Icon:SetAlpha(1)
+					threatFrame.TimeLeft:Hide()
 				end
 			end
 		end
@@ -491,10 +526,9 @@ local function UpdateShipyardMissionList()
 		-- then, display all we need
 		if addon.db.showExtraMissionInfo and mission.canStart and not mission.inProgress then
 			if addon.db.showMissionThreats then
-				local counterableThreats = GarrisonMission_DetermineCounterableThreats(mission.missionID, mission.followerTypeID)
 				missionFrame.Threats = missionFrame.Threats or {}
-
 				local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
+				local counterCounts = DetermineCounterableThreats(mission.missionID, mission.followerTypeID, enemies)
 				for j = 1, #enemies do
 					for mechanicID, mechanic in pairs(enemies[j].mechanics) do
 						index = index + 1
@@ -511,11 +545,22 @@ local function UpdateShipyardMissionList()
 						else
 							threatFrame.Border:SetAtlas('GarrMission_EncounterAbilityBorder')
 						end
-						-- GarrisonMission_DetermineCounterableThreats + GarrisonMissionButton_CheckTooltipThreat
-						GarrisonMissionButton_CheckTooltipThreat(threatFrame, mission.missionID, mechanicID, counterableThreats)
-						threatFrame.TimeLeft:Hide()
+
+						threatFrame.id = mechanicID
+						threatFrame.info = mechanic
 						threatFrame.Icon:SetTexture(mechanic.icon)
+						threatFrame.Icon:SetDesaturated(false)
+						threatFrame.Icon:SetAlpha(1)
 						threatFrame:Show()
+
+						GarrisonMissionButton_CheckTooltipThreat(threatFrame, mission.missionID, mechanicID, counterCounts)
+						if addon.db.desaturateUnavailable then
+							local canCounter = threatFrame.Check:IsShown()
+							threatFrame.Icon:SetDesaturated(not canCounter)
+							threatFrame.Icon:SetAlpha(canCounter and 1 or 0.5)
+							threatFrame.Check:Hide()
+						end
+						threatFrame.TimeLeft:Hide()
 					end
 				end
 				if index > 0 then

@@ -581,8 +581,33 @@ local function UpdateFollowerList(self)
 end
 
 local function UpdateDisplayedFollower(self, followerID)
+	local followerTab = self:GetParent().FollowerTab
 	-- display learnable counters
-	FollowerAbilityOptions(self:GetParent().FollowerTab, followerID)
+	FollowerAbilityOptions(followerTab, followerID)
+
+	if not followerTab.isLandingPage then return end
+	if followerTab.followerList.followerType == _G.LE_FOLLOWER_TYPE_GARRISON_6_0 then
+		local isCollected = type(followerID) == 'string' or C_Garrison.IsFollowerCollected(followerID)
+		-- replace ability icons with their countered threats
+		for i = 1, maxNumAbilities + maxNumTraits do
+			local isAbility = i <= maxNumAbilities
+			local funcName  = isAbility and 'GetFollowerAbilityAtIndex' or 'GetFollowerTraitAtIndex'
+			if not isCollected then funcName = funcName .. 'ByID' end
+			local abilityID = C_Garrison[funcName](followerID, isAbility and i or i - maxNumAbilities)
+			local threatID  = abilityID ~= 0 and C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityID)
+
+			if threatID and THREATS[threatID] then
+				local name = C_Garrison.GetFollowerAbilityName(abilityID)
+				for i, button in pairs(followerTab.AbilitiesFrame.Abilities) do
+					-- find correct ability button
+					if button.Name:GetText() == name then
+						button.IconButton.Icon:SetTexture(THREATS[threatID].icon)
+						break
+					end
+				end
+			end
+		end
+	end
 end
 
 -- note: this will only work once Blizzard_GarrisonUI (and therefore this addon) is loaded

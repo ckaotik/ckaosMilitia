@@ -410,8 +410,8 @@ local function UpdateMissionList()
 
 		-- show required abilities
 		local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
+		local iLevelReq  = (mission.level == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel or 0) - 14
 		local  levelReq  = mission.level - 2
-		local iLevelReq  = (levelReq == _G.GARRISON_FOLLOWER_MAX_LEVEL and mission.iLevel or 0) - 14
 		local numThreats = 0
 
 		for j = 1, #enemies do

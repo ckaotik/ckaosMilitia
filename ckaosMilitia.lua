@@ -7,6 +7,8 @@ _G[addonName] = addon
 -- GLOBALS: GarrisonLandingPageMinimapButton, GarrisonFollowerButton_SetCounterButton, GarrisonLandingPageReportList_FormatXPNumbers
 -- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc, tContains, select, rawget, setmetatable
 
+-- TODO: follower retraining is not detected
+
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
 local floor = math.floor
 local emptyTable = {}
@@ -15,6 +17,9 @@ local shipyardThreatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_SH
 local THREATS, ABILITIES = {}, {}
 for _, threat in pairs(threatList) do THREATS[threat.id] = threat end
 for _, threat in pairs(shipyardThreatList) do THREATS[threat.id] = threat end
+
+addon.THREATS = THREATS
+addon.ABILITIES = ABILITIES
 
 addon.frame = CreateFrame('Frame')
 addon.frame:SetScript('OnEvent', function(self, event, ...)
@@ -254,7 +259,7 @@ local function ShipyardMissionOnEnter(info, inProgress)
 		local beforeWidget = GarrisonMissionListTooltipThreatsFrame:IsShown() and GarrisonMissionListTooltipThreatsFrame or tooltipFrame.MissionDuration
 		GarrisonShipyardMapMission_SetBottomWidget(beforeWidget)
 
-		-- add misison expiry info
+		-- add mission expiry info
 		GarrisonShipyardMapMission_AnchorToBottomWidget(tooltipFrame.MissionExpires, 0, -tooltipFrame.MissionExpires.yspacing)
 		tooltipFrame.MissionExpires:Show()
 		tooltipFrame.TimeRemaining:SetText(info.offerTimeRemaining)
@@ -362,19 +367,24 @@ local function DetermineCounterableThreats(missionID, followerType, enemies)
 	local enemies = enemies or select(8, C_Garrison.GetMissionInfo(missionID))
 	for i = 1, #(enemies or emptyTable) do
 		for mechanicID, mechanic in pairs(enemies[i].mechanics) do
-			for _, followerID in ipairs(ABILITIES[mechanicID] or emptyTable) do
-				if C_Garrison.GetFollowerBiasForMission(missionID, followerID) > -1 then
-					local status = C_Garrison.GetFollowerStatus(followerID)
-					if not status then
-						counterCounts.full[mechanicID] = (counterCounts.full[mechanicID] or 0) + 1
-					elseif status == _G.GARRISON_FOLLOWER_ON_MISSION then
-						if not counterCounts.away[mechanicID] then
-							counterCounts.away[mechanicID] = {}
+			local hasData = counterCounts.full[mechanicID] or counterCounts.worker[mechanicID]
+			if not hasData then
+				-- do not count followers multiple times when threats exist multiple times
+				for _, followerID in ipairs(ABILITIES[mechanicID] or emptyTable) do
+					-- bias tells us about level & ilevel requirements
+					if C_Garrison.GetFollowerBiasForMission(missionID, followerID) > -1 then
+						local status = C_Garrison.GetFollowerStatus(followerID)
+						if not status then
+							counterCounts.full[mechanicID] = (counterCounts.full[mechanicID] or 0) + 1
+						elseif status == _G.GARRISON_FOLLOWER_ON_MISSION then
+							if not counterCounts.away[mechanicID] then
+								counterCounts.away[mechanicID] = {}
+							end
+							local returnTime = C_Garrison.GetFollowerMissionTimeLeftSeconds(followerID)
+							table.insert(counterCounts.away[mechanicID], returnTime)
+						elseif status == _G.GARRISON_FOLLOWER_WORKING then
+							counterCounts.worker[mechanicID] = (counterCounts.worker[mechanicID] or 0) + 1
 						end
-						local returnTime = C_Garrison.GetFollowerMissionTimeLeftSeconds(followerID)
-						table.insert(counterCounts.away[mechanicID], returnTime)
-					elseif status == _G.GARRISON_FOLLOWER_WORKING then
-						counterCounts.worker[mechanicID] = (counterCounts.worker[mechanicID] or 0) + 1
 					end
 				end
 			end

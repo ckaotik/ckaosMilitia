@@ -1,5 +1,6 @@
 # 6.2v4
 - Fixed incorrect mission threat counter information when threats were encountered multiple times
+- Fixed shipyard bonus effect areas not showing on non-English locales
 
 # 6.2v3
 - Fixed lua error when follower list was too short

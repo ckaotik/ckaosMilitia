@@ -1150,6 +1150,21 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc('GarrisonShipyardMap_UpdateMissions', UpdateShipyardMissionList)
 	hooksecurefunc(GarrisonShipyardFrame, 'ClearParty', UpdateShipyardMissionList) -- CloseMission
 
+	-- fix shipyard bonus effects not showing on non-english locales
+	hooksecurefunc('GarrisonShipyardMap_SetupBonus', function(self, missionFrame, mission)
+		if mission.typePrefix == 'ShipMissionIcon-Bonus' and not missionFrame.bonusRewardArea then
+			missionFrame.bonusRewardArea = true
+			for id, reward in pairs(mission.rewards) do
+				local posX = reward.posX or 0
+				local posY = reward.posY or 0
+				missionFrame.BonusAreaEffect:SetAtlas(reward.textureAtlas, true)
+				missionFrame.BonusAreaEffect:ClearAllPoints()
+				missionFrame.BonusAreaEffect:SetPoint('CENTER', self.MapTexture, 'TOPLEFT', posX, posY * -1)
+				break
+			end
+		end
+	end)
+
 	-- skip battle animations on finished missions
 	hooksecurefunc(GarrisonMissionComplete, 'OnSkipKeyPressed', MissionCompleteSkipAnimations)
 	-- show success chance on finished missions

@@ -1,3 +1,6 @@
+# 6.2v4
+- Fixed incorrect mission threat counter information when threats were encountered multiple times
+
 # 6.2v3
 - Fixed lua error when follower list was too short
 - Fixed ship mission return times only showing up on landing page

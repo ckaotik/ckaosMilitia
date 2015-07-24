@@ -1,11 +1,14 @@
 local addonName, addon, _ = ...
 _G[addonName] = addon
 
--- GLOBALS: _G, C_Garrison, C_Timer, GameTooltip, GarrisonMissionFrame, GarrisonRecruiterFrame, GarrisonRecruitSelectFrame, GarrisonLandingPage, GarrisonLandingPageReport, ITEM_QUALITY_COLORS, LE_ITEM_QUALITY_COMMON
--- GLOBALS: GarrisonFollowerList_UpdateFollowers, GarrisonThreatCountersFrame, GarrisonFollowerTooltip, GarrisonFollowerTooltip_Show, GarrisonBuildingFrame, FloatingGarrisonMissionTooltip
--- GLOBALS: CreateFrame, IsAddOnLoaded, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick, GetCurrencyInfo
--- GLOBALS: GarrisonLandingPageMinimapButton, GarrisonFollowerButton_SetCounterButton, GarrisonLandingPageReportList_FormatXPNumbers
--- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc, tContains, select, rawget, setmetatable
+-- GLOBALS: _G, C_Garrison, GameTooltip, GarrisonMissionFrame, GarrisonShipyardFrame, GarrisonRecruiterFrame, GarrisonRecruitSelectFrame, GarrisonLandingPage
+-- GLOBALS: ITEM_QUALITY_COLORS, LE_ITEM_QUALITY_COMMON, GARRISON_HIGH_THREAT_VALUE, GARRISON_MISSION_COMPLETE_BANNER_WIDTH
+-- GLOBALS: GarrisonMission, GarrisonMissionComplete
+-- GLOBALS: GarrisonThreatCountersFrame, GarrisonFollowerTooltip, GarrisonFollowerTooltip_Show, FloatingGarrisonMissionTooltip, GarrisonMissionListTooltipThreatsFrame, GarrisonMissionButton_CheckTooltipThreat
+-- GLOBALS: GarrisonShipyardFollowerTooltip, GarrisonShipyardMapMissionTooltip, GarrisonShipyardMapMission_SetBottomWidget, GarrisonShipyardMapMission_AnchorToBottomWidget, GarrisonShipyardMapMission_UpdateTooltipSize
+-- GLOBALS: CreateFrame, RGBTableToColorCode, HybridScrollFrame_GetOffset, GetItemInfo, BreakUpLargeNumbers, HandleModifiedItemClick, GetCurrencyInfo, PlaySound
+-- GLOBALS: GarrisonLandingPageMinimapButton, GarrisonFollowerButton_SetCounterButton, GarrisonFollowerPage_SetItem, GarrisonLandingPageReportList_FormatXPNumbers
+-- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc, tContains, select, rawget, setmetatable, tonumber, rawget, type
 
 -- TODO: follower retraining is not detected
 
@@ -13,7 +16,7 @@ local tinsert, tremove, tsort = table.insert, table.remove, table.sort
 local floor = math.floor
 local emptyTable = {}
 local threatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_GARRISON_6_0)
-local shipyardThreatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_SHIPYARD_6_2)
+local shipyardThreatList = C_Garrison.GetAllEncounterThreats(_G.LE_FOLLOWER_TYPE_SHIPYARD_6_2)
 local THREATS, ABILITIES = {}, {}
 for _, threat in pairs(threatList) do THREATS[threat.id] = threat end
 for _, threat in pairs(shipyardThreatList) do THREATS[threat.id] = threat end
@@ -275,8 +278,8 @@ end
 
 local function MissionOnEnter(self, button)
 	local info = self.info
-	if not self.info and GarrisonLandingPageReport:IsShown() and GarrisonLandingPageReport.selectedTab == GarrisonLandingPageReport.Available then
-		info = (GarrisonLandingPageReport.List.AvailableItems or emptyTable)[self.id]
+	if not self.info and GarrisonLandingPage.Report:IsShown() and GarrisonLandingPage.Report.selectedTab == GarrisonLandingPage.Report.Available then
+		info = GarrisonLandingPage.Report.List.items[self.id]
 	end
 	if not info or info.isRare or info.inProgress then return end
 
@@ -406,8 +409,6 @@ end
 local followerSlotIcon = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0:0:0:0:32:32:4:26:4:26|t'
 local function UpdateMissionList()
 	GarrisonMissionFrame.FollowerList.SearchBox:SetText('')
-	-- GarrisonFollowerList_UpdateFollowers(GarrisonMissionFrame.FollowerList)
-
 	if not addon.db.showExtraMissionInfo then return end
 	local self     = GarrisonMissionFrame.MissionTab.MissionList
 	local active   = self.showInProgress
@@ -480,7 +481,7 @@ local function UpdateMissionList()
 					button.Threats[numThreats] = threatFrame
 				end
 				-- update threat counters
-				if mission.followerTypeID == LE_FOLLOWER_TYPE_SHIPYARD_6_2
+				if mission.followerTypeID == _G.LE_FOLLOWER_TYPE_SHIPYARD_6_2
 					and mechanic.factor <= GARRISON_HIGH_THREAT_VALUE then
 					threatFrame.Border:SetAtlas('GarrMission_WeakEncounterAbilityBorder')
 				else
@@ -549,7 +550,7 @@ local function UpdateShipyardMissionList()
 							threatFrame = missionFrame.Threats[index]
 						end
 						-- update threat counters
-						if mission.followerTypeID == LE_FOLLOWER_TYPE_SHIPYARD_6_2
+						if mission.followerTypeID == _G.LE_FOLLOWER_TYPE_SHIPYARD_6_2
 							and mechanic.factor <= GARRISON_HIGH_THREAT_VALUE then
 							threatFrame.Border:SetAtlas('GarrMission_WeakEncounterAbilityBorder')
 						else
@@ -722,7 +723,7 @@ local function MissionCompleteFollowerOnEnter(self)
 	local followerType = C_Garrison.GetFollowerTypeByID(garrFollowerID)
 
 	local tooltip, xpWidth = GarrisonFollowerTooltip, nil
-	if followerType == LE_FOLLOWER_TYPE_SHIPYARD_6_2 then
+	if followerType == _G.LE_FOLLOWER_TYPE_SHIPYARD_6_2 then
 		tooltip, xpWidth = GarrisonShipyardFollowerTooltip, 231
 	end
 	tooltip:ClearAllPoints()
@@ -1167,7 +1168,7 @@ function addon:ADDON_LOADED(event, arg1)
 		button:HookScript('OnEnter', MissionOnEnter)
 	end
 	hooksecurefunc('GarrisonLandingPageReportMission_OnEnter', MissionOnEnter)
-	for _, button in pairs(GarrisonLandingPageReport.List.listScroll.buttons) do
+	for _, button in pairs(GarrisonLandingPage.Report.List.listScroll.buttons) do
 		button:HookScript('OnEnter', MissionOnEnter)
 	end
 

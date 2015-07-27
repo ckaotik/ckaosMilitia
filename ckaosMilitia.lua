@@ -1299,6 +1299,7 @@ function addon:ADDON_LOADED(event, arg1)
 	frame.ThreatCountersFrame:SetPoint('TOPRIGHT', -42, -60)
 	frame.ThreatCountersFrame:Show()
 	for i, threatButton in pairs(frame.ThreatCountersFrame.ThreatsList) do
+		threatButton:SetScript('OnClick', nil)
 		if i >= 2 then
 			local point, anchor, otherPoint, x, y = threatButton:GetPoint()
 			threatButton:SetPoint(point, anchor, otherPoint, x+5, y)
@@ -1306,8 +1307,8 @@ function addon:ADDON_LOADED(event, arg1)
 	end
 
 	local frame = GarrisonRecruitSelectFrame
-	frame.ThreatCountersFrame = CreateFrame('Frame', nil, frame, 'GarrisonThreatCountersFrameTemplate')
-	frame.ThreatCountersFrame:SetPoint('TOPRIGHT', frame.FollowerSelection, 'TOPRIGHT', -12, 30)
+	frame.ThreatCountersFrame = CreateFrame('Frame', nil, frame.FollowerSelection, 'GarrisonThreatCountersFrameTemplate')
+	frame.ThreatCountersFrame:SetPoint('TOPRIGHT', -12, 30)
 	frame.ThreatCountersFrame:Show()
 	frame.FollowerSelection.ChooseFollower:SetJustifyH('LEFT')
 

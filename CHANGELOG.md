@@ -1,4 +1,5 @@
 # 6.2v4
+- New: Reward counts in mission tooltips now consider follower bonuses to currency and gold yields
 - Fixed incorrect mission threat counter information when threats were encountered multiple times
 - Fixed shipyard bonus effect areas not showing on non-English locales
 - Fixed error when double clicking on follower list when not currently building a party

@@ -774,15 +774,21 @@ local function FollowerListReplaceAbilityWithThreat(self, index, ability)
 	end
 end
 
-local function GetRewardText(reward)
+local function GetRewardText(reward, missionID)
 	local rewardTitle, count, icon = reward.title, reward.quantity, reward.icon
 	local quality = reward.quality and reward.quality + 1 or nil
+	local currencyMultipliers, goldMultiplier
+	if missionID then
+		currencyMultipliers, goldMultiplier = select(8, C_Garrison.GetPartyMissionInfo(missionID))
+	end
 
 	if reward.itemID then
 		rewardTitle, _, quality, _, _, _, _, _, _, icon = GetItemInfo(reward.itemID)
 		icon = icon or reward.icon or '' -- item data might not be available
 	elseif reward.currencyID == 0 then
-		count = BreakUpLargeNumbers(floor(reward.quantity / _G.COPPER_PER_GOLD))
+		count = BreakUpLargeNumbers(floor(reward.quantity * (goldMultiplier or 1) / _G.COPPER_PER_GOLD))
+	elseif reward.currencyID then
+		count = BreakUpLargeNumbers(reward.quantity * (currencyMultipliers and currencyMultipliers[reward.currencyID] or 1))
 	elseif reward.followerXP then
 		count = GarrisonLandingPageReportList_FormatXPNumbers(reward.followerXP)
 	else
@@ -819,7 +825,7 @@ local function UpdateInProgressMissionTooltip(missionInfo, showRewards)
 	end
 	for id, reward in pairs(missionInfo.rewards) do
 		lineNum = lineNum + 1
-		_G['GameTooltipTextLeft'..lineNum]:SetText(GetRewardText(reward))
+		_G['GameTooltipTextLeft'..lineNum]:SetText(GetRewardText(reward, missionInfo.missionID))
 	end
 
 	for i = lineNum, GameTooltip:NumLines() do

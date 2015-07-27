@@ -856,7 +856,7 @@ end
 local function FollowerOnDoubleClick(self, btn)
 	if not addon.db.doubleClickToAddFollower then return end
 	local frame = self:GetParent():GetParent():GetParent():GetParent()
-	if not frame or not frame.MissionTab or not frame.MissionTab.MissionPage then return end
+	if not frame or not frame.MissionTab or not frame.MissionTab.MissionPage or not frame.MissionTab.MissionPage:IsShown() then return end
 
 	-- trigger second click handling
 	self:GetScript('OnClick')(self, btn)
@@ -986,7 +986,8 @@ local function MissionCompleteSuccessChance(self)
 	local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
 	if not chance then
 		-- API forgets about failed missions, parse chance text
-		chance = tonumber(frame.ChanceFrame.ChanceText:GetText():match('(%d+)%%') or '')
+		local chanceText = frame.ChanceFrame.ChanceText:GetText() or ''
+		chance = tonumber(chanceText:match('(%d+)%%') or '')
 	end
 	if chance and chance < 100 then
 		local resultText

@@ -10,12 +10,10 @@ _G[addonName] = addon
 -- GLOBALS: GarrisonLandingPageMinimapButton, GarrisonFollowerButton_SetCounterButton, GarrisonFollowerPage_SetItem, GarrisonLandingPageReportList_FormatXPNumbers
 -- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc, tContains, select, rawget, setmetatable, tonumber, rawget, type
 
--- TODO: follower retraining is not detected
-
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
 local floor = math.floor
 local emptyTable = {}
-local threatList = C_Garrison.GetAllEncounterThreats(LE_FOLLOWER_TYPE_GARRISON_6_0)
+local threatList = C_Garrison.GetAllEncounterThreats(_G.LE_FOLLOWER_TYPE_GARRISON_6_0)
 local shipyardThreatList = C_Garrison.GetAllEncounterThreats(_G.LE_FOLLOWER_TYPE_SHIPYARD_6_2)
 local THREATS, ABILITIES = {}, {}
 for _, threat in pairs(threatList) do THREATS[threat.id] = threat end
@@ -219,6 +217,7 @@ local function GetMissionThreats(missionID)
 	return hasThreats and threats or false
 end
 
+local retrainedFollower
 local function ScanFollowerAbilities(followerID, removeData)
 	for threatID, followers in pairs(ABILITIES) do
 		for i, follower in pairs(followers) do
@@ -228,7 +227,7 @@ local function ScanFollowerAbilities(followerID, removeData)
 			end
 		end
 	end
-	if removeData then return end
+	if removeData == true then return end
 	for threatID in pairs(GetFollowerCounters(followerID) or emptyTable) do
 		if not ABILITIES[threatID] then
 			ABILITIES[threatID] = {}
@@ -1064,7 +1063,12 @@ end
 function addon:GARRISON_SHOW_LANDING_PAGE()
 	UpdateThreatCounters(GarrisonLandingPage)
 end
-function addon:GARRISON_FOLLOWER_LIST_UPDATE()
+function addon:GARRISON_FOLLOWER_LIST_UPDATE(event, ...)
+	if retrainedFollower then
+		ScanFollowerAbilities(retrainedFollower)
+		retrainedFollower = nil
+	end
+
 	-- always show counter buttons
 	GarrisonThreatCountersFrame:Show()
 	-- TODO: we could probably pick more suitable events/hooks for these actions
@@ -1072,15 +1076,10 @@ function addon:GARRISON_FOLLOWER_LIST_UPDATE()
 	UpdateThreatCounters()
 end
 
-function addon:GARRISON_FOLLOWER_UPGRADED(event, followerID)
-	ScanFollowerAbilities(followerID)
-	UpdateThreatCounters()
-end
-
 function addon:GARRISON_MISSION_COMPLETE_RESPONSE(event, missionID, canComplete, success, followers)
 	if success or not followers or #followers < 1 then return end
 	for index, follower in pairs(followers) do
-		if follower.state == 2 then
+		if follower.state == _G.LE_FOLLOWER_MISSION_COMPLETE_STATE_DEAD then
 			-- ship was destroyed
 			ScanFollowerAbilities(follower.followerID, true)
 		end
@@ -1141,8 +1140,15 @@ function addon:ADDON_LOADED(event, arg1)
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_LIST_UPDATE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_ADDED')
-	addon.frame:RegisterEvent('GARRISON_FOLLOWER_UPGRADED')
 	addon.frame:RegisterEvent('GARRISON_MISSION_COMPLETE_RESPONSE')
+
+	-- follower retraining
+	hooksecurefunc(C_Garrison, 'CastSpellOnFollowerAbility', function(followerID, abilityID)
+		retrainedFollower = followerID
+	end)
+	hooksecurefunc(C_Garrison, 'CastSpellOnFollower', function(followerID)
+		retrainedFollower = followerID
+	end)
 
 	-- setup hooks
 	hooksecurefunc('GarrisonMissionPage_SetCounters', MissionUpdateCounters)

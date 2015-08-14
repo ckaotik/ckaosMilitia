@@ -343,6 +343,8 @@ local function UpdateThreatCounterButtons(self)
 		local numFollowers, numAvailable = GetNumFollowersForMechanic(button.id)
 		if numAvailable ~= numFollowers then
 			button.Count:SetFormattedText('%d/%d', numAvailable, numFollowers)
+		else
+			button.Count:SetFormattedText('%d', numAvailable)
 		end
 		button.Icon:SetDesaturated(numFollowers < 1 and addon.db.desaturateUnavailable)
 	end

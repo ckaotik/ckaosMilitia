@@ -1,3 +1,6 @@
+# 6.2v5
+- Fixed threat button count including working followers when set to hide, when all followers are available
+
 # 6.2v4
 - New: Reward counts in mission tooltips now consider follower bonuses to currency and gold yields
 - New: Fixed Blizzard bug causing shipyard bonus effect areas not showing on non-English locales

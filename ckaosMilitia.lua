@@ -995,7 +995,7 @@ end
 
 local function MissionCompleteSuccessChance(self)
 	local frame = self.MissionComplete
-	local chance = C_Garrison.GetRewardChance(frame.currentMission.missionID)
+	local chance = C_Garrison.GetMissionSuccessChance(frame.currentMission.missionID)
 	if not chance then
 		-- API forgets about failed missions, parse chance text
 		local chanceText = frame.ChanceFrame.ChanceText:GetText() or ''

@@ -1205,16 +1205,18 @@ function addon:ADDON_LOADED(event, arg1)
 	end
 
 	-- nicely display weapon/armor on landing page followers
-	GarrisonLandingPage.FollowerTab.Model.UpgradeFrame:SetPoint('BOTTOM', 0, 30)
+	local sourceText = GarrisonLandingPage.FollowerTab.Source.SourceText
 	local weapon = GarrisonLandingPage.FollowerTab.ItemWeapon
 	weapon:ClearAllPoints()
-	weapon:SetPoint('BOTTOMLEFT', GarrisonLandingPage.FollowerTab.Model, 'BOTTOMLEFT', 26, -40)
-	weapon.ItemLevel:ClearAllPoints(); weapon.ItemLevel:SetPoint('BOTTOM', weapon.Icon, 'TOP', 0, 2)
+	weapon:SetPoint('TOPLEFT', sourceText, 'TOPLEFT', 80, -40)
+	weapon.ItemLevel:ClearAllPoints()
+	weapon.ItemLevel:SetPoint('BOTTOM', weapon.Icon, 'TOP', 0, 2)
 	weapon.Border:Hide(); weapon:SetWidth(weapon.Icon:GetWidth())
 	local armor = GarrisonLandingPage.FollowerTab.ItemArmor
 	armor:ClearAllPoints()
 	armor:SetPoint('TOPLEFT', weapon.Icon, 'TOPRIGHT', 4, 0)
-	armor.ItemLevel:ClearAllPoints(); armor.ItemLevel:SetPoint('BOTTOM', armor.Icon, 'TOP', 0, 2)
+	armor.ItemLevel:ClearAllPoints()
+	armor.ItemLevel:SetPoint('BOTTOM', armor.Icon, 'TOP', 0, 2)
 	armor.Border:Hide(); armor:SetWidth(armor.Icon:GetWidth())
 
 	-- provide easier code access

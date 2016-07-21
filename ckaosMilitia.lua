@@ -416,6 +416,7 @@ local followerSlotIcon = '|TInterface\\FriendsFrame\\UI-Toast-FriendOnlineIcon:0
 local function UpdateMissionList()
 	GarrisonMissionFrame.FollowerList.SearchBox:SetText('')
 	if not addon.db.showExtraMissionInfo then return end
+
 	local self     = GarrisonMissionFrame.MissionTab.MissionList
 	local active   = self.showInProgress
 	local missions = active and self.inProgressMissions or self.availableMissions
@@ -519,10 +520,8 @@ local function UpdateMissionList()
 		end
 		-- move title text
 		if numThreats > 0 then
-			local anchorFrom, relativeTo, anchorTo, xOffset, yOffset = button.Title:GetPoint()
-			if yOffset == 0 then
-				button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, yOffset + 10)
-			end
+			local anchorFrom, relativeTo, anchorTo, xOffset = button.Title:GetPoint()
+			button.Title:SetPoint(anchorFrom, relativeTo, anchorTo, xOffset, 10)
 		end
 	end
 end

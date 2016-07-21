@@ -682,7 +682,7 @@ end
 -- note: this will only work once Blizzard_GarrisonUI (and therefore this addon) is loaded
 local function ShowMinimapBuildings(self, motion)
 	if not addon.db.showMinimapBuildings then return end
-	local buildings = C_Garrison.GetBuildings()
+	local buildings = C_Garrison.GetBuildings(_G.LE_GARRISON_TYPE_6_0)
 	tsort(buildings, SortBuildingsBySize)
 
 	for i, building in ipairs(buildings) do
@@ -736,6 +736,7 @@ local function MissionCompleteFollowerOnEnter(self)
 		C_Garrison.GetFollowerXP(followerID),
 		C_Garrison.GetFollowerLevelXP(followerID),
 		C_Garrison.GetFollowerItemLevelAverage(followerID),
+		C_Garrison.GetFollowerSpecializationAtIndex(followerID, 1),
 		C_Garrison.GetFollowerAbilityAtIndex(followerID, 1),
 		C_Garrison.GetFollowerAbilityAtIndex(followerID, 2),
 		C_Garrison.GetFollowerAbilityAtIndex(followerID, 3),
@@ -1078,7 +1079,7 @@ function addon:GARRISON_FOLLOWER_LIST_UPDATE(event, ...)
 	UpdateThreatCounters()
 end
 
-function addon:GARRISON_MISSION_COMPLETE_RESPONSE(event, missionID, canComplete, success, followers)
+function addon:GARRISON_MISSION_COMPLETE_RESPONSE(event, missionID, canComplete, success, overmaxSucceeded, followers)
 	if success or not followers or #followers < 1 then return end
 	for index, follower in pairs(followers) do
 		if follower.state == _G.LE_FOLLOWER_MISSION_COMPLETE_STATE_DEAD then
@@ -1088,9 +1089,9 @@ function addon:GARRISON_MISSION_COMPLETE_RESPONSE(event, missionID, canComplete,
 	end
 end
 
-function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerID, xpGain, oldXP, oldLevel, oldQuality)
+function addon:GARRISON_FOLLOWER_XP_CHANGED(event, followerTypeID, followerID, xpGain, oldXP, oldLevel, oldQuality)
 	local _, _, level, quality, currXP, maxXP = C_Garrison.GetFollowerMissionCompleteInfo(followerID)
-	if quality > oldQuality and quality == _G.LE_ITEM_QUALITY_EPIC then
+	if oldQuality and quality > oldQuality and quality == _G.LE_ITEM_QUALITY_EPIC then
 		-- new ability at epic quality
 		ScanFollowerAbilities(followerID)
 	end
@@ -1102,7 +1103,7 @@ end
 
 function addon:GARRISON_UPGRADEABLE_RESULT(event)
 	-- this is the actual initialization
-	for index, info in pairs(C_Garrison.GetFollowers()) do
+	for index, info in pairs(C_Garrison.GetFollowers(_G.LE_FOLLOWER_TYPE_GARRISON_6_0)) do
 		if info.isCollected then
 			ScanFollowerAbilities(info.followerID)
 		end
@@ -1166,6 +1167,7 @@ function addon:ADDON_LOADED(event, arg1)
 	hooksecurefunc(GarrisonShipyardFrame, 'ClearParty', UpdateShipyardMissionList) -- CloseMission
 
 	-- fix shipyard bonus effects not showing on non-english locales
+	-- this fix is also provided by !BlizzBugsSuck
 	hooksecurefunc('GarrisonShipyardMap_SetupBonus', function(self, missionFrame, mission)
 		if mission.typePrefix == 'ShipMissionIcon-Bonus' and not missionFrame.bonusRewardArea then
 			missionFrame.bonusRewardArea = true

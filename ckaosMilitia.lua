@@ -1283,8 +1283,8 @@ function addon:ADDON_LOADED(event, arg1)
 				missionPage.Follower1:SetPoint(point, anchor, relativeTo, x, -206 + 20)
 			else
 				if not missionPage.BuffsFrame or not missionPage.BuffsFrame:IsShown() then return end
-				local anchor, anchorTo, otherAnchor, x, y = missionPage.BuffsFrame:GetPoint()
-				missionPage.BuffsFrame:SetPoint(anchor, anchorTo, otherAnchor, x, 198 - 18)
+				local anchor, element, anchorTo = missionPage.BuffsFrame:GetPoint()
+				missionPage.BuffsFrame:SetPoint(anchor, element, anchorTo, 0, -18)
 			end
 		end)
 	end

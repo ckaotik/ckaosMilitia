@@ -1171,7 +1171,7 @@ function addon:ADDON_LOADED(event, arg1)
 
 	-- setup hooks
 	hooksecurefunc(GarrisonMissionFrame:GetMissionPage(), 'SetCounters', MissionUpdateCounters)
-	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList, 'UpdateMissions', UpdateMissionList)
+	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList, 'Update', UpdateMissionList)
 	hooksecurefunc(GarrisonMissionFrame.MissionTab.MissionList.listScroll, 'update', UpdateMissionList)
 	hooksecurefunc('GarrisonMissionButton_SetRewards', UpdateMissionRewards)
 	hooksecurefunc('GarrisonFollowerButton_AddAbility', FollowerListReplaceAbilityWithThreat)

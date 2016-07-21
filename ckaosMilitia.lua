@@ -179,7 +179,7 @@ end
 
 local counters = {}
 local maxNumAbilities, maxNumTraits = 2, 3
-local function GetFollowerCounters(followerID)
+local function GetFollowerCounters(followerID, fullData)
 	if not followerID then return false end
 	wipe(counters)
 	local hasCounters = false
@@ -197,7 +197,11 @@ local function GetFollowerCounters(followerID)
 		if threatID then
 			if THREATS[threatID] then
 				hasCounters = true
-				counters[threatID] = (counters[threatID] or 0) + 1
+				if fullData then
+					table.insert(counters, THREATS[threatID])
+				else
+					counters[threatID] = (counters[threatID] or 0) + 1
+				end
 			end
 		end
 	end
@@ -913,26 +917,17 @@ local function UpdateFollowerCounters(frame, button, follower, showCounters, las
 		missionID = frame.MissionTab.MissionPage.missionInfo.missionID
 	end
 	local threats  = showCounters and GetMissionThreats(missionID)
-	local counters = GetFollowerCounters(follower.followerID)
-	local numShown = 0
-	for threatID in pairs(counters or emptyTable) do
-		if numShown >= 4 then break end
-		if not threats or threats[threatID] then
-			numShown = numShown + 1
-			GarrisonFollowerButton_SetCounterButton(button, follower.followerID, numShown, THREATS[threatID], nil, follower.followerTypeID)
-			button.Counters[numShown].info.showCounters = false
-		end
-	end
+	local counters = GetFollowerCounters(follower.followerID, true)
 
-	-- we might have added abilities, when there were only traits before
-	local traits = showCounters and frame.followerTraits
-		and frame.followerTraits[follower.followerID]
-	for i = 1, traits and #traits or 0 do
-		if numShown >= 4 then break end
-		numShown = numShown + 1
-		GarrisonFollowerButton_SetCounterButton(button, follower.followerID, numShown, traits[i], nil, follower.followerTypeID)
+	local numShown = GarrisonFollowerButton_AddCounterButtons(button, follower, 0, counters, lastUpdate)
+
+	button.Counters[1]:ClearAllPoints()
+	if numShown <= 4 then
+		button.Counters[1]:SetPoint('RIGHT', button.Counters[1]:GetParent(), 'TOPRIGHT', -8, -46/2)
+	else
+		button.Counters[1]:SetPoint('TOPRIGHT', -8, -4)
 	end
-	button.Counters[1]:SetPoint('TOPRIGHT', -8, numShown <= 2 and -16 or -4)
+	-- button.Status:SetPoint('RIGHT', -1 * numShown * button.Counters[1]:GetWidth(), 0)
 end
 
 local function CheckPseudoCounter(enemies, counterID)

@@ -900,8 +900,10 @@ local function FollowerOnDoubleClick(self, btn)
 end
 
 local function UpdateFollowerCounters(frame, button, follower, showCounters, lastUpdate)
+	-- TODO This needs work, see GarrisonMission:GetFollowerBuffsForMission(missionID).
 	if (not showCounters and not addon.db.showListCounters)
-		or (showCounters and not addon.db.showLowLevelCounters)
+		-- or (showCounters and not addon.db.showLowLevelCounters)
+		or showCounters
 		or not button.Counters or not button.Counters[1] or not button.Counters[1].Icon then
 		-- only display on listings and/or low levels on mission grouping
 		return
@@ -1068,8 +1070,6 @@ function addon:GARRISON_FOLLOWER_LIST_UPDATE(event, ...)
 		retrainedFollower = nil
 	end
 
-	-- always show counter buttons
-	GarrisonThreatCountersFrame:Show()
 	-- TODO: we could probably pick more suitable events/hooks for these actions
 	-- this tracks: => work, => mission, => inactive, and probably more
 	UpdateThreatCounters()
@@ -1232,6 +1232,13 @@ function addon:ADDON_LOADED(event, arg1)
 
 	-- provide easier code access
 	GarrisonMissionFrame.FollowerTab.ThreatCountersFrame = GarrisonThreatCountersFrame
+
+	local settings = GarrisonFollowerOptions[_G.LE_FOLLOWER_TYPE_GARRISON_6_0]
+	settings.minFollowersForThreatCountersFrame = 0
+	settings.missionTooltipShowPartialCountersAsFull = addon.db.showLowLevelCounters
+	-- settings.useAbilityTooltipStyleWithoutCounters = true
+	-- settings.displayCounterAbilityInPlaceOfMechanic = not addon.db.replaceAbilityWithThreat
+
 	-- for some reason, none of GarrisonFollowerList's hooks works here
 	local frames = {GarrisonMissionFrame, GarrisonShipyardFrame, GarrisonLandingPage}
 	for _, frame in pairs(frames) do

@@ -868,7 +868,8 @@ end
 local function FollowerOnDoubleClick(self, btn)
 	if not addon.db.doubleClickToAddFollower then return end
 	-- This can be either a GarrisonMissionFollowerOrCategoryListButtonMixin  or a GarrisonMissionFollowerOrCategoryListButtonTemplate.
-	local frame = self:GetFollowerList():GetParent()
+	local frame = self.GetFollowerList and self:GetFollowerList():GetParent()
+		or self:GetParent():GetParent():GetParent():GetParent()
 	if not frame or not frame.MissionTab or not frame.MissionTab.MissionPage or not frame.MissionTab.MissionPage:IsShown() then return end
 
 	-- trigger second click handling

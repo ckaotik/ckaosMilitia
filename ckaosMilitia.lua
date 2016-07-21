@@ -868,7 +868,8 @@ end
 
 local function FollowerOnDoubleClick(self, btn)
 	if not addon.db.doubleClickToAddFollower then return end
-	local frame = self:GetParent():GetParent():GetParent():GetParent()
+	-- This can be either a GarrisonMissionFollowerOrCategoryListButtonMixin  or a GarrisonMissionFollowerOrCategoryListButtonTemplate.
+	local frame = self:GetFollowerList():GetParent()
 	if not frame or not frame.MissionTab or not frame.MissionTab.MissionPage or not frame.MissionTab.MissionPage:IsShown() then return end
 
 	-- trigger second click handling
@@ -1252,9 +1253,13 @@ function addon:ADDON_LOADED(event, arg1)
 
 		if frame.MissionComplete then
 			-- double click to add follower to mission
-			for index, button in pairs(frame.FollowerList.listScroll.buttons) do
-				button:HookScript('OnDoubleClick', FollowerOnDoubleClick)
-			end
+			hooksecurefunc(frame:GetFollowerList(), 'Setup', function(self, mainFrame, followerType, followerTemplate, initialOffsetX)
+				for index, button in pairs(self.listScroll.buttons) do
+					button = button.Follower or button
+					button:HookScript('OnDoubleClick', FollowerOnDoubleClick)
+				end
+			end)
+
 			-- enable follower tooltips & links on mission complete
 			for index, button in pairs(frame.MissionComplete.Stage.FollowersFrame.Followers) do
 				button:HookScript('OnMouseDown', MissionCompleteFollowerOnClick)

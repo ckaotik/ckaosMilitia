@@ -982,14 +982,12 @@ local function MissionUpdateCounters(followers, enemies, missionID)
 
 	-- update checkmarks
 	for i = 1, #enemies do
-		local enemyFrame = enemies[i]
-		for mechanicIndex = 1, #enemyFrame.Mechanics do
-			local mechanicFrame = enemyFrame.Mechanics[mechanicIndex]
-			if mechanicFrame.hasCounter and not mechanicFrame.Check:IsShown() then
-				mechanicFrame.Check:SetAlpha(1)
-				mechanicFrame.Check:Show()
+		for _, threatFrame in pairs(enemies[i].Counters) do
+			if threatFrame.hasCounter and not threatFrame.Check:IsShown() then
+				threatFrame.Check:SetAlpha(1)
+				threatFrame.Check:Show()
 				-- FIXME: this also plays for pre-existing pseudo counters
-				mechanicFrame.Anim:Play()
+				threatFrame.Anim:Play()
 			end
 		end
 	end

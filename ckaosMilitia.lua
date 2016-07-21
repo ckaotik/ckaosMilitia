@@ -10,6 +10,11 @@ _G[addonName] = addon
 -- GLOBALS: GarrisonLandingPageMinimapButton, GarrisonFollowerButton_SetCounterButton, GarrisonFollowerPage_SetItem, GarrisonLandingPageReportList_FormatXPNumbers
 -- GLOBALS: pairs, ipairs, wipe, table, strsplit, tostring, strjoin, strrep, next, hooksecurefunc, tContains, select, rawget, setmetatable, tonumber, rawget, type
 
+-- Follower types:
+--  LE_FOLLOWER_TYPE_GARRISON_6_0
+--  LE_FOLLOWER_TYPE_SHIPYARD_6_2
+--  LE_FOLLOWER_TYPE_GARRISON_7_0
+
 local tinsert, tremove, tsort = table.insert, table.remove, table.sort
 local floor = math.floor
 local emptyTable = {}
@@ -464,7 +469,7 @@ local function UpdateMissionList()
 		-- show required abilities
 		local numThreats = 0
 		local _, _, _, _, _, _, _, enemies = C_Garrison.GetMissionInfo(mission.missionID)
-		local counterCounts = DetermineCounterableThreats(mission.missionID, mission.followerType, enemies)
+		local counterCounts = DetermineCounterableThreats(mission.missionID, mission.followerTypeID, enemies)
 		for j = 1, #enemies do
 			if not addon.db.showMissionThreats then break end
 			button.Threats = button.Threats or {}
@@ -1056,9 +1061,6 @@ function addon:GARRISON_MISSION_NPC_OPENED()
 	-- note: this is also triggered on successful mission completion
 	UpdateThreatCounters(GarrisonMissionFrame)
 end
-function addon:GARRISON_SHIPYARD_NPC_OPENED()
-	-- UpdateThreatCounters(GarrisonShipyardFrame)
-end
 function addon:GARRISON_RECRUITMENT_NPC_OPENED()
 	UpdateThreatCounters(GarrisonRecruiterFrame)
 	UpdateThreatCounters(GarrisonRecruitSelectFrame)
@@ -1103,7 +1105,22 @@ end
 
 function addon:GARRISON_UPGRADEABLE_RESULT(event)
 	-- this is the actual initialization
-	for index, info in pairs(C_Garrison.GetFollowers(_G.LE_FOLLOWER_TYPE_GARRISON_6_0)) do
+	local followers
+
+	followers = C_Garrison.GetFollowers(_G.LE_FOLLOWER_TYPE_GARRISON_6_0) or {}
+	for index, info in pairs(followers) do
+		if info.isCollected then
+			ScanFollowerAbilities(info.followerID)
+		end
+	end
+	followers = C_Garrison.GetFollowers(_G.LE_FOLLOWER_TYPE_SHIPYARD_6_2) or {}
+	for index, info in pairs(followers) do
+		if info.isCollected then
+			ScanFollowerAbilities(info.followerID)
+		end
+	end
+	followers = C_Garrison.GetFollowers(_G.LE_FOLLOWER_TYPE_GARRISON_7_0) or {}
+	for index, info in pairs(followers) do
 		if info.isCollected then
 			ScanFollowerAbilities(info.followerID)
 		end
@@ -1137,7 +1154,7 @@ function addon:ADDON_LOADED(event, arg1)
 
 	-- register events
 	addon.frame:RegisterEvent('GARRISON_MISSION_NPC_OPENED')
-	addon.frame:RegisterEvent('GARRISON_SHIPYARD_NPC_OPENED')
+	-- addon.frame:RegisterEvent('GARRISON_SHIPYARD_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_RECRUITMENT_NPC_OPENED')
 	addon.frame:RegisterEvent('GARRISON_SHOW_LANDING_PAGE')
 	addon.frame:RegisterEvent('GARRISON_FOLLOWER_XP_CHANGED')

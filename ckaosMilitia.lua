@@ -661,7 +661,8 @@ local function UpdateDisplayedFollower(self, followerID)
 			local abilityID = C_Garrison[funcName](followerID, isAbility and i or i - maxNumAbilities)
 			local threatID  = abilityID ~= 0 and C_Garrison.GetFollowerAbilityCounterMechanicInfo(abilityID)
 
-			if threatID and THREATS[threatID] then
+			if threatID and THREATS[threatID]
+				and followerTab.AbilitiesFrame.Abilities then
 				local name = C_Garrison.GetFollowerAbilityName(abilityID)
 				for i, button in pairs(followerTab.AbilitiesFrame.Abilities) do
 					-- find correct ability button
